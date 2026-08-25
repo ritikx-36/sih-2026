@@ -125,6 +125,44 @@ def run_baseline(region_key, days, t_min, t_max, setpoint):
 
 
 # --------------------------------------------------------------------------- #
+#  Auto-optimiser — search sensible passive options for the least heating
+# --------------------------------------------------------------------------- #
+OPT_GLAZING = ["Double glazing", "Double, low-e"]
+OPT_WWR = [0.25, 0.35]
+OPT_FACADES = [("S",), ("S", "E", "W")]
+OPT_MASS = [("Water wall", 1.0, 6.0), ("Water wall", 2.0, 9.0), ("PCM (paraffin ~22 C)", 1.0, 6.0)]
+FACADE_LABEL = {("S",): "S", ("S", "E", "W"): "S + E + W"}
+N_CANDIDATES = len(OPT_GLAZING) * len(OPT_WWR) * len(OPT_FACADES) * len(OPT_MASS)
+
+
+@st.cache_data(show_spinner=False)
+def _aux_only(region_key, days, t_min, t_max, glazing_key, wwr, facades,
+              orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint):
+    """Heating demand (kWh/day) for one candidate — a single heated simulation."""
+    clim = _climate(region_key, days, t_min, t_max)
+    shelter = _build_shelter(True, glazing_key, wwr, facades, orientation,
+                             L, W, H, ach, mass_kind, mass_vol, mass_area)
+    return engine.simulate(shelter, clim, heating_setpoint=setpoint).energy_per_day()["aux_heating"]
+
+
+@st.cache_data(show_spinner=False)
+def optimize(region_key, days, t_min, t_max, orientation, L, W, H, ach, setpoint):
+    """Rank passive-envelope options by heating demand, lowest first. Site,
+    geometry and air-leakage stay at the user's values; insulated envelope assumed."""
+    out = []
+    for g in OPT_GLAZING:
+        for wwr in OPT_WWR:
+            for fac in OPT_FACADES:
+                for mk, mv, ma in OPT_MASS:
+                    aux = _aux_only(region_key, days, t_min, t_max, g, wwr, fac,
+                                    orientation, L, W, H, ach, mk, mv, ma, setpoint)
+                    out.append(dict(glazing=g, wwr=wwr, facades=fac,
+                                    mass_kind=mk, mass_vol=mv, mass_area=ma, aux=aux))
+    out.sort(key=lambda x: x["aux"])
+    return out
+
+
+# --------------------------------------------------------------------------- #
 #  UI
 # --------------------------------------------------------------------------- #
 st.set_page_config(page_title="Thermal-Shelter", page_icon="🏔️", layout="wide")
@@ -206,6 +244,36 @@ if base_aux and saving >= 0:
 elif base_aux:
     st.warning(f"This design needs **{-saving:.0f}% more** heating than the baseline "
                f"({aux:.1f} vs {base_aux:.1f} kWh/day) — try more insulation, south glazing, or mass.")
+
+# ---- auto-optimiser ---------------------------------------------------- #
+with st.expander("Auto-optimise — let the tool search for the best passive design", expanded=False):
+    st.caption(f"Holds your site ({region_key}), size ({L:.0f}×{W:.0f}×{H:.1f} m) and air-leakage "
+               f"fixed, then simulates {N_CANDIDATES} combinations of glazing, window area, window "
+               f"facades and thermal mass to find the one that needs the least heating "
+               f"(insulated envelope assumed).")
+    if st.button("Find the best design", type="primary"):
+        with st.spinner(f"Simulating {N_CANDIDATES} candidate designs…"):
+            ranked = optimize(region_key, days, t_min, t_max, orientation, L, W, H, ach, setpoint)
+        best = ranked[0]
+        best_saving = (1 - best["aux"] / base_aux) * 100 if base_aux else 0.0
+        st.success(
+            f"**Best design — {best['glazing']}, {best['wwr'] * 100:.0f}% windows on "
+            f"{FACADE_LABEL[best['facades']]}, {best['mass_kind']} {best['mass_vol']:.1f} m³**  →  "
+            f"**{best['aux']:.1f} kWh/day**, {best_saving:.0f}% less heating than the baseline hut.")
+        delta = aux - best["aux"]
+        if delta > 0.1:
+            st.caption(f"That is **{delta:.1f} kWh/day less** than the design currently on screen "
+                       f"({aux:.1f} kWh/day). Set these values in the sidebar to apply it.")
+        else:
+            st.caption("Your current design is already at or near the best in this search.")
+        st.dataframe(
+            [{"Glazing": r["glazing"],
+              "Windows": f"{r['wwr'] * 100:.0f}% {FACADE_LABEL[r['facades']]}",
+              "Thermal mass": f"{r['mass_kind']} {r['mass_vol']:.1f} m³",
+              "Heating (kWh/day)": round(r["aux"], 1),
+              "vs baseline": f"{(1 - r['aux'] / base_aux) * 100:.0f}% less" if base_aux else "—"}
+             for r in ranked[:5]],
+            hide_index=True, width="stretch")
 
 # ---- tabs -------------------------------------------------------------- #
 tab_t, tab_e, tab_f = st.tabs(["Temperature", "Energy balance", "Heat-flow over time"])

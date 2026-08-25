@@ -16,3 +16,8 @@ __pycache__/
 # Data cache / outputs
 data/cache/
 outputs/
+
+# Presentation deck — kept local, not tracked on GitHub
+docs/slides/
+docs/*.pptx
+docs/*.pdf
