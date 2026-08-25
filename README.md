@@ -58,8 +58,13 @@ Run the demo — simulates a baseline hut vs a passive design and writes the cha
 .venv/bin/python scripts/run_demo.py
 ```
 
-An interactive dashboard (`streamlit run app.py`) — design a shelter live with sliders for
-geometry, materials and orientation — is in progress.
+Or launch the **interactive dashboard** — pick a region and design a shelter live with
+sliders for geometry, materials, glazing, orientation and thermal mass, watching it update
+against a baseline hut in real time:
+
+```bash
+.venv/bin/streamlit run app.py
+```
 
 ## How it works
 
@@ -92,7 +97,7 @@ thermalshelter/     core physics package
   geometry.py       shelter geometry & envelope                 (done)
   engine.py         transient RC thermal model — the core       (done)
   comfort.py        comfort metrics                             (done)
-app.py              Streamlit dashboard                         (in progress)
+app.py              Streamlit dashboard — the interactive demo   (done)
 scripts/run_demo.py baseline-vs-passive demo → docs/demo_curve.png
 docs/               figures used in this README
 ```
@@ -103,7 +108,7 @@ docs/               figures used in this README
 |---|---|
 | Physics engine — climate, solar (pvlib), transient RC model, comfort metrics | **Done** |
 | Demo — baseline vs passive over a multi-day Ladakh winter | **Done** |
-| Interactive dashboard — design a shelter live | In progress |
+| Interactive dashboard — design a shelter live for any cold-region site | **Done** |
 | Design comparison + optimizer | Planned |
 | ANSYS cross-validation & real Ladakh climate data | Planned |
 
