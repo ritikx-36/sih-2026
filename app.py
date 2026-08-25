@@ -54,15 +54,16 @@ C_AMB, C_BASE, C_DESIGN, C_BAND, C_MASS = "#8a8a8a", "#d9534f", "#1f77b4", "#8fd
 # --------------------------------------------------------------------------- #
 #  Pure compute (no st.* here) — cached
 # --------------------------------------------------------------------------- #
-def _location(region_key):
-    r = REGIONS[region_key]
-    return climate.Location(name=region_key, latitude=r["lat"], longitude=r["lon"],
-                            altitude=r["alt"], timezone="Asia/Kolkata", albedo=r["albedo"])
+def _location(geo):
+    # geo = (name, lat, lon, alt, albedo) — a preset or a user-entered custom site
+    name, lat, lon, alt, albedo = geo
+    return climate.Location(name=name, latitude=lat, longitude=lon,
+                            altitude=alt, timezone="Asia/Kolkata", albedo=albedo)
 
 
-def _climate(region_key, days, t_min, t_max):
+def _climate(geo, days, t_min, t_max):
     t_max = max(t_max, t_min + 1.0)          # keep the daily swing sane
-    return climate.synthetic_day(_location(region_key), t_min=t_min, t_max=t_max,
+    return climate.synthetic_day(_location(geo), t_min=t_min, t_max=t_max,
                                  days=int(days), freq_minutes=30)
 
 
@@ -90,9 +91,9 @@ def _build_shelter(insulated, glazing_key, wwr, facades, orientation,
 
 
 @st.cache_data(show_spinner=False)
-def run_design(region_key, days, t_min, t_max, insulated, glazing_key, wwr, facades, orientation,
+def run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, facades, orientation,
                L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high):
-    clim = _climate(region_key, days, t_min, t_max)
+    clim = _climate(geo, days, t_min, t_max)
     shelter = _build_shelter(insulated, glazing_key, wwr, facades, orientation,
                              L, W, H, ach, mass_kind, mass_vol, mass_area)
     free = engine.simulate(shelter, clim, vent_high=vent_high)         # temperature curve
@@ -111,9 +112,9 @@ def run_design(region_key, days, t_min, t_max, insulated, glazing_key, wwr, faca
 
 
 @st.cache_data(show_spinner=False)
-def run_baseline(region_key, days, t_min, t_max, setpoint):
+def run_baseline(geo, days, t_min, t_max, setpoint):
     """Fixed reference: an existing-style uninsulated, leaky, single-glazed hut."""
-    clim = _climate(region_key, days, t_min, t_max)
+    clim = _climate(geo, days, t_min, t_max)
     shelter = geometry.box_shelter(
         wall=geometry.UNINSULATED_STONE, roof=BARE_ROOF, floor=BARE_FLOOR,
         glazing=geometry.SINGLE_GLAZING, window_wall_ratio=0.12,
@@ -136,17 +137,17 @@ N_CANDIDATES = len(OPT_GLAZING) * len(OPT_WWR) * len(OPT_FACADES) * len(OPT_MASS
 
 
 @st.cache_data(show_spinner=False)
-def _aux_only(region_key, days, t_min, t_max, glazing_key, wwr, facades,
+def _aux_only(geo, days, t_min, t_max, glazing_key, wwr, facades,
               orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint):
     """Heating demand (kWh/day) for one candidate — a single heated simulation."""
-    clim = _climate(region_key, days, t_min, t_max)
+    clim = _climate(geo, days, t_min, t_max)
     shelter = _build_shelter(True, glazing_key, wwr, facades, orientation,
                              L, W, H, ach, mass_kind, mass_vol, mass_area)
     return engine.simulate(shelter, clim, heating_setpoint=setpoint).energy_per_day()["aux_heating"]
 
 
 @st.cache_data(show_spinner=False)
-def optimize(region_key, days, t_min, t_max, orientation, L, W, H, ach, setpoint):
+def optimize(geo, days, t_min, t_max, orientation, L, W, H, ach, setpoint):
     """Rank passive-envelope options by heating demand, lowest first. Site,
     geometry and air-leakage stay at the user's values; insulated envelope assumed."""
     out = []
@@ -154,7 +155,7 @@ def optimize(region_key, days, t_min, t_max, orientation, L, W, H, ach, setpoint
         for wwr in OPT_WWR:
             for fac in OPT_FACADES:
                 for mk, mv, ma in OPT_MASS:
-                    aux = _aux_only(region_key, days, t_min, t_max, g, wwr, fac,
+                    aux = _aux_only(geo, days, t_min, t_max, g, wwr, fac,
                                     orientation, L, W, H, ach, mk, mv, ma, setpoint)
                     out.append(dict(glazing=g, wwr=wwr, facades=fac,
                                     mass_kind=mk, mass_vol=mv, mass_area=ma, aux=aux))
@@ -172,14 +173,32 @@ sb = st.sidebar
 sb.title("Design controls")
 
 with sb.expander("Climate & region", expanded=True):
-    region_key = st.selectbox("Region", list(REGIONS), index=0,
+    region_key = st.selectbox("Region", list(REGIONS) + ["Custom location"], index=0,
                               help="Deployment site — sets latitude, altitude, snow albedo "
-                                   "and a typical clear-winter-day temperature range. "
-                                   "The model works for any location.")
-    r = REGIONS[region_key]
+                                   "and a typical clear-winter-day temperature range. Pick a "
+                                   "preset, or choose Custom location to enter any site on Earth.")
+    if region_key == "Custom location":
+        cc1, cc2 = st.columns(2)
+        lat = cc1.number_input("Latitude (°N)", -90.0, 90.0, 34.0, 0.5,
+                               help="Where the sun sits in the sky. Positive = northern hemisphere.")
+        alt = cc2.number_input("Altitude (m)", 0, 8000, 3500, 100,
+                               help="Higher = thinner air = stronger, sharper sun.")
+        albedo = st.slider("Ground reflectivity (albedo)", 0.10, 0.90, 0.60, 0.05,
+                           help="How much sunlight the ground reflects back up. "
+                                "Fresh snow ≈ 0.8, old snow ≈ 0.5, bare ground ≈ 0.2.")
+        lon = 77.0
+        loc_name = "Custom location"
+        site_label = f"a custom site ({lat:.1f}°N, {int(alt):,} m)"
+        def_tmin, def_tmax = -14.0, 2.0
+    else:
+        r = REGIONS[region_key]
+        lat, lon, alt, albedo = r["lat"], r["lon"], r["alt"], r["albedo"]
+        loc_name = site_label = region_key
+        def_tmin, def_tmax = r["t_min"], r["t_max"]
+    geo = (loc_name, lat, lon, alt, albedo)
     days = st.slider("Days simulated", 1, 7, 5)
-    t_min = st.slider("Coldest night (°C)", -40.0, 5.0, r["t_min"], 1.0, key=f"tmin_{region_key}")
-    t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, r["t_max"], 1.0, key=f"tmax_{region_key}")
+    t_min = st.slider("Coldest night (°C)", -40.0, 5.0, def_tmin, 1.0, key=f"tmin_{region_key}")
+    t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, def_tmax, 1.0, key=f"tmax_{region_key}")
 
 with sb.expander("Envelope", expanded=True):
     insulated = st.radio("Construction", ["Well-insulated", "Uninsulated"],
@@ -212,9 +231,9 @@ with sb.expander("Operation", expanded=False):
     vent_high = st.slider("Vent when above (°C)", 22.0, 30.0, 24.0, 0.5) if do_vent else None
 
 # ---- run --------------------------------------------------------------- #
-d = run_design(region_key, days, t_min, t_max, insulated, glazing_key, wwr, tuple(facades),
+d = run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, tuple(facades),
                orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high)
-b = run_baseline(region_key, days, t_min, t_max, setpoint)
+b = run_baseline(geo, days, t_min, t_max, setpoint)
 
 m = d["metrics"]
 solar = d["energy"]["solar_windows"]              # useful solar into the room (through glass)
@@ -224,7 +243,7 @@ saving = (1 - aux / base_aux) * 100 if base_aux else 0.0
 
 # ---- header ------------------------------------------------------------ #
 st.title("Thermal-Shelter — passive design studio")
-st.caption(f"Design an area-specific shelter for {region_key} and see how warm it stays — "
+st.caption(f"Design an area-specific shelter for {site_label} and see how warm it stays — "
            "and how little heating it needs — against a baseline hut.  "
            "SIH 2026 · PS 26051 (DRDO, Software).")
 
@@ -247,13 +266,13 @@ elif base_aux:
 
 # ---- auto-optimiser ---------------------------------------------------- #
 with st.expander("Auto-optimise — let the tool search for the best passive design", expanded=False):
-    st.caption(f"Holds your site ({region_key}), size ({L:.0f}×{W:.0f}×{H:.1f} m) and air-leakage "
+    st.caption(f"Holds your current site, size ({L:.0f}×{W:.0f}×{H:.1f} m) and air-leakage "
                f"fixed, then simulates {N_CANDIDATES} combinations of glazing, window area, window "
                f"facades and thermal mass to find the one that needs the least heating "
                f"(insulated envelope assumed).")
     if st.button("Find the best design", type="primary"):
         with st.spinner(f"Simulating {N_CANDIDATES} candidate designs…"):
-            ranked = optimize(region_key, days, t_min, t_max, orientation, L, W, H, ach, setpoint)
+            ranked = optimize(geo, days, t_min, t_max, orientation, L, W, H, ach, setpoint)
         best = ranked[0]
         best_saving = (1 - best["aux"] / base_aux) * 100 if base_aux else 0.0
         st.success(
