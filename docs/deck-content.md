@@ -15,7 +15,9 @@ sub-points 14–16 pt. Points, not paragraphs. Export to **PDF** before uploadin
 - `docs/deck_flow.png` — methodology pipeline (Slide 3)
 - `docs/dashboard.png` — the live design studio's default view: KPIs + "84% less heating"
   banner + temperature chart (Slide 3, "working prototype")
-- `docs/deck_regions.png` — % less heating by region (Slide 5)
+- `docs/seasonal.png` — the all-year proof on real measured weather: month-by-month heating
+  bars + comfort line + the fuel/₹/CO₂ saved per shelter per year (Slide 5)
+- `docs/deck_regions.png` — % less heating by region (Slide 5, optional second image)
 
 ---
 
@@ -73,7 +75,8 @@ comfort band on sunlight alone, while the baseline hut tracks the freezing outdo
 
 **Technologies used:**
 - Python 3.12 — NumPy · SciPy · pandas
-- pvlib — solar position & clear-sky irradiance (including snow albedo)
+- pvlib — solar position & irradiance (clear-sky *or* real measured), including snow albedo
+- PVGIS / EPW — real measured weather (Typical Meteorological Year) fetched live for any site
 - Streamlit + Plotly — the live design dashboard (working prototype)
 - matplotlib — figures & reporting
 - ANSYS — CFD / thermal cross-validation (later phase)
@@ -83,6 +86,8 @@ comfort band on sunlight alone, while the baseline hut tracks the freezing outdo
   forward in time.
 - Drive it with a **sol-air outdoor temperature** plus **long-wave night-sky cooling**.
 - Compute **solar irradiance on every wall, roof and window** with pvlib.
+- Run on **real measured weather** — a PVGIS Typical Meteorological Year (or EPW) for the
+  site — and roll it up **month-by-month across the year**, not just one design-day.
 - Score each design for **comfort** (% of time in 18–24 °C) and **energy** (kWh/day to hold
   20 °C).
 - **Compare and rank** designs by material, size, orientation and glazing.
@@ -110,8 +115,9 @@ comfort band on sunlight alone, while the baseline hut tracks the freezing outdo
   validate just the winner in CFD — where each case would otherwise take hours.
 
 **Potential challenges → how we overcome them:**
-- Sparse climate data for remote posts → accept user CSV + a typical-day generator +
-  built-in region presets.
+- Sparse climate data for remote posts → pull a free **PVGIS Typical Meteorological Year**
+  (or an EPW) for any coordinates, with built-in region presets and a typical-day generator
+  as fallback where nothing else exists.
 - A lumped RC model simplifies real 3-D heat flow → validate and calibrate the shortlisted
   design in ANSYS CFD.
 - Material properties vary by source → a sourced, editable material-property database.
@@ -120,21 +126,25 @@ comfort band on sunlight alone, while the baseline hut tracks the freezing outdo
 
 ## Slide 5 — IMPACT AND BENEFITS
 
-**Headline impact:**
-> **82–86% less heating than a baseline hut** — verified across cold sites over 5 clear
-> winter days, holding 20 °C.
+**Headline impact (on a real measured Leh year — PVGIS TMY):**
+> **~80% less heating, every month of the year** — 7,960 vs 39,814 kWh/year to hold 20 °C.
+> That is **≈3,900 litres of kerosene, ₹3.5 lakh and ~10 tonnes of CO₂ saved — per shelter,
+> per year.** *(On a clear design-day the same shelter shows 82–86% less heating across Leh,
+> Drass, Siachen and Tawang — Leh 84%.)*
 
 **Who it helps:** armed forces & border posts · high-altitude communities · disaster relief.
 
 **Benefits:**
-- **Economic** — far less diesel and kerosene hauled to remote posts, and designs done in
-  minutes instead of months.
-- **Environmental** — less combustion means lower emissions in fragile Himalayan ecosystems.
+- **Economic** — ~3,900 fewer litres of kerosene and **₹3.5 lakh saved per shelter per year**,
+  cutting the convoy burden on treacherous supply lines; and designs done in minutes, not months.
+- **Environmental** — **~10 tonnes less CO₂ per shelter per year**; less combustion in a
+  fragile Himalayan ecosystem.
 - **Operational & social** — energy resilience where supply lines are thin; warmer, safer
   shelters; fewer cold-related injuries.
 
-*Image:* `docs/deck_regions.png` — "Auxiliary heat to hold 20 °C: passive design vs baseline
-hut, by region."
+*Image:* `docs/seasonal.png` — "Comfortable all year on real measured weather: month-by-month
+heating (design vs baseline) and % time comfortable, with the fuel/₹/CO₂ saved per shelter per
+year." *(Optional second image: `docs/deck_regions.png` — % less heating by region.)*
 
 ---
 
@@ -142,6 +152,8 @@ hut, by region."
 
 - **pvlib-python** (Sandia National Laboratories) — solar position & clear-sky irradiance —
   https://pvlib-python.readthedocs.io
+- **PVGIS** (European Commission Joint Research Centre) — Typical Meteorological Year, free,
+  no API key — https://re.jrc.ec.europa.eu/pvg_tools/en/
 - **Berdahl, P. & Martin, M. (1984), "Emissivity of clear skies"** — long-wave radiative
   night-sky cooling
 - **ASHRAE Handbook of Fundamentals** — sol-air temperature, RC thermal networks, U-values

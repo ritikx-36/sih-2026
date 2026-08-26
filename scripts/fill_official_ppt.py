@@ -1,11 +1,12 @@
 """
 Fill the OFFICIAL SIH Idea template with our Thermal-Shelter content.
 
-Opens the mandated 2025 template, changes the year to 2026, populates the six
-mandated sections (title page + 5 content slides), drops our figures into the
-free zones, deletes the "Important Instructions" slide, and saves an editable,
-submission-ready .pptx. The template's own layout/branding/fonts are preserved;
-only text, a few box sizes, and images change.
+Opens the official SIH 2026 Idea template (already titled "SMART INDIA HACKATHON
+2026"), populates the six mandated sections (title page + 5 content slides), drops
+our figures into the free zones, renders the References slide as a numbered list
+with clickable links, deletes the "Important Instructions" slide, and saves an
+editable, submission-ready .pptx. The template's own layout/branding/fonts are
+preserved; only text, a few box sizes, and images change.
 
 python-pptx lives on the SYSTEM interpreter here, so run:
     python3 scripts/fill_official_ppt.py
@@ -24,7 +25,7 @@ from pptx.enum.text import MSO_AUTO_SIZE, PP_ALIGN
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 
-SRC = "/Users/ritik/Downloads/SIH2025-IDEA-Presentation-Format.pptx"
+SRC = "/Users/ritik/Downloads/SIH2026-IDEA-Presentation-Format.pptx"
 OUT = "/Users/ritik/sih/docs/Thermal-Shelter_SIH2026_PS26051.pptx"
 IMG = "/Users/ritik/sih/docs"
 
@@ -62,6 +63,44 @@ def fill(tf, rows):
         r.font.bold = bold
         if color is not None:
             r.font.color.rgb = color
+
+
+def fill_refs(tf, refs):
+    """Numbered reference list; each URL becomes a clickable, blue, underlined run.
+
+    refs: list of (description, url_or_None). Renders "1. <desc> — <link>" per row,
+    so the references read in sequence and every link is click-through in the PPT/PDF.
+    """
+    style_frame(tf)
+    tf.clear()
+    first = tf.paragraphs[0]
+    for i, (desc, url) in enumerate(refs):
+        p = first if i == 0 else tf.add_paragraph()
+        p.space_before = Pt(0 if i == 0 else 6)
+        p.space_after = Pt(2)
+        p.line_spacing = 1.02
+
+        num = p.add_run()
+        num.text = f"{i + 1}. "
+        num.font.name = BODY_F
+        num.font.size = Pt(15)
+        num.font.bold = True
+        num.font.color.rgb = INK
+
+        body = p.add_run()
+        body.text = f"{desc} — " if url else desc
+        body.font.name = BODY_F
+        body.font.size = Pt(15)
+        body.font.color.rgb = INK
+
+        if url:
+            link = p.add_run()
+            link.text = url
+            link.font.name = BODY_F
+            link.font.size = Pt(15)
+            link.hyperlink.address = url          # makes the run click-through
+            link.font.color.rgb = ACCENT
+            link.font.underline = True
 
 
 def set_box(shape, left, top, width, height):
@@ -103,9 +142,10 @@ prs = Presentation(SRC)
 S = prs.slides
 
 # ---- Slide 0 : TITLE PAGE ------------------------------------------------- #
-title0 = find(S[0], "Title 7")
-for r in title0.text_frame.paragraphs[0].runs:
-    r.text = r.text.replace("2025", "2026")
+title0 = find(S[0], "Title 7")             # template already reads "... HACKATHON 2026"
+for para in title0.text_frame.paragraphs:  # defensive: force 2026 even if a template regresses
+    for r in para.runs:
+        r.text = r.text.replace("2025", "2026")
 
 fill(find(S[0], "TextBox 9").text_frame, [
     ("Problem Statement ID – 26051", 18, True, INK, 0, 0),
@@ -157,7 +197,8 @@ set_box(body2, 0.45, 1.35, 6.05, 5.4)
 fill(body2.text_frame, [
     ("Technologies used", 17, True, ACCENT, 0, 0),
     ("Python 3.12 — NumPy · SciPy · pandas", 14, False, INK, 1, 0),
-    ("pvlib — solar position & clear-sky irradiance (snow albedo)", 14, False, INK, 1, 0),
+    ("pvlib — solar position & irradiance: clear-sky or real measured (snow albedo)", 14, False, INK, 1, 0),
+    ("PVGIS / EPW — real measured weather (TMY) fetched live for any site", 14, False, INK, 1, 0),
     ("Streamlit + Plotly — the live design dashboard (prototype, right)", 14, False, INK, 1, 0),
     ("matplotlib — figures & reporting", 14, False, INK, 1, 0),
     ("ANSYS — CFD / thermal cross-validation (later phase)", 14, False, INK, 1, 0),
@@ -165,6 +206,7 @@ fill(body2.text_frame, [
     ("Lumped resistance–capacitance (RC) thermal network, stepped through time", 14, False, INK, 1, 0),
     ("Driven by sol-air outdoor temperature + long-wave night-sky cooling", 14, False, INK, 1, 0),
     ("pvlib solar irradiance on every wall, roof and window", 14, False, INK, 1, 0),
+    ("Runs on a real measured year (PVGIS TMY / EPW) — rolled up month-by-month", 14, False, INK, 1, 0),
     ("Score comfort (% time in 18–24 °C) and energy (kWh/day to hold 20 °C)", 14, False, INK, 1, 0),
     ("Compare & rank designs by material, size, orientation and glazing", 14, False, INK, 1, 0),
 ])
@@ -198,39 +240,45 @@ fill(body3.text_frame, [
 # ---- Slide 4 : IMPACT AND BENEFITS ---------------------------------------- #
 s4 = S[4]
 body4 = find(s4, "TextBox 8")
-set_box(body4, 0.7, 1.4, 7.05, 5.35)
+set_box(body4, 0.55, 1.4, 6.15, 5.5)
 fill(body4.text_frame, [
-    ("82–86% less heating than a baseline hut", 18, True, GREEN, 0, 0),
-    ("Verified across cold sites over 5 clear winter days, holding 20 °C.", 14, False, INK, 0, 2),
-    ("Who it helps", 17, True, ACCENT, 0, 8),
-    ("Armed forces & border posts · high-altitude communities · disaster relief.", 14, False, INK, 1, 0),
-    ("Benefits", 17, True, ACCENT, 0, 8),
-    ("Economic — far less diesel and kerosene hauled to remote posts; designs done in "
-     "minutes, not months.", 14, False, INK, 1, 0),
-    ("Environmental — less combustion means lower emissions in fragile Himalayan ecosystems.", 14, False, INK, 1, 0),
+    ("~80% less heating — every month of a real Leh year", 18, True, GREEN, 0, 0),
+    ("7,960 vs 39,814 kWh/year to hold 20 °C — driven by a PVGIS Typical "
+     "Meteorological Year (real clouds and irradiance, not a clear-sky day).", 13, False, INK, 0, 3),
+    ("≈ 3,900 L kerosene · ₹3.5 lakh · ~10 t CO₂ — saved per shelter, per year.", 15, True, ACCENT, 0, 5),
+    ("(Clear design-day: 82–86% less across Leh, Drass, Siachen, Tawang — Leh 84%.)", 12, False, GREY, 0, 4),
+    ("Who it helps", 16, True, ACCENT, 0, 8),
+    ("Armed forces & border posts · high-altitude communities · disaster relief.", 13, False, INK, 1, 0),
+    ("Benefits", 16, True, ACCENT, 0, 8),
+    ("Economic — thousands of litres of kerosene and ₹3.5 lakh saved per shelter each "
+     "year; designs done in minutes, not months.", 13, False, INK, 1, 0),
+    ("Environmental — ~10 t less CO₂ per shelter per year in a fragile Himalayan ecosystem.", 13, False, INK, 1, 0),
     ("Operational & social — energy resilience where supply lines are thin; warmer, safer "
-     "shelters; fewer cold-related injuries.", 14, False, INK, 1, 0),
+     "shelters; fewer cold-related injuries.", 13, False, INK, 1, 0),
 ])
-bottom = add_img(s4, "deck_regions.png", 8.0, 2.15, 4.95)
-caption(s4, 8.0, bottom + 0.05, 4.95,
-        "Auxiliary heat to hold 20 °C — passive design vs baseline hut, by region.")
+bottom = add_img(s4, "seasonal.png", 6.9, 1.55, 6.05)
+caption(s4, 6.9, bottom + 0.05, 6.05,
+        "All year on real measured weather — monthly heating (design vs baseline hut), "
+        "% time comfortable, and the fuel / ₹ / CO₂ saved per shelter per year.")
 
 # ---- Slide 5 : RESEARCH AND REFERENCES ------------------------------------ #
 s5 = S[5]
 body5 = find(s5, "TextBox 8")
 set_box(body5, 0.7, 1.5, 12.0, 5.2)
-fill(body5.text_frame, [
+fill_refs(body5.text_frame, [
     ("pvlib-python (Sandia National Laboratories) — solar position & clear-sky "
-     "irradiance — https://pvlib-python.readthedocs.io", 15, False, INK, 0, 0),
+     "irradiance", "https://pvlib-python.readthedocs.io"),
+    ("PVGIS (EU Joint Research Centre) — Typical Meteorological Year, free, no API key",
+     "https://re.jrc.ec.europa.eu/pvg_tools/en/"),
     ("Berdahl, P. & Martin, M. (1984), “Emissivity of clear skies” — long-wave "
-     "radiative night-sky cooling", 15, False, INK, 0, 6),
+     "radiative night-sky cooling", None),
     ("ASHRAE Handbook of Fundamentals — sol-air temperature, RC thermal networks, "
-     "U-values & SHGC", 15, False, INK, 0, 6),
+     "U-values & SHGC", None),
     ("Balcomb, J. D. / U.S. Department of Energy — passive-solar design: Trombe & "
-     "water walls, thermal mass", 15, False, INK, 0, 6),
+     "water walls, thermal mass", None),
     ("DRDO–DIHAR (Defence Institute of High-Altitude Research), Leh — high-altitude "
-     "habitat & thermal-comfort context", 15, False, INK, 0, 6),
-    ("Project repository — https://github.com/ritikx-36/sih-2026", 15, False, INK, 0, 6),
+     "habitat & thermal-comfort context", None),
+    ("Project repository", "https://github.com/ritikx-36/sih-2026"),
 ])
 
 # ---- team-name ovals on every content slide ------------------------------- #

@@ -12,6 +12,11 @@ end is the one page to memorise.
   than a baseline hut."** That is a *relative* aux-heating reduction and it is rock-solid. Do
   **not** open with "it reaches +18 °C" — that absolute figure depends on how many clear days,
   and a sharp judge will push on it. Comfort-temperature is the *story*; the % saving is the *proof*.
+- **Have both proof-numbers ready — a clear day AND a real year.** The 82–86% is a *clear
+  design-day*. We also run a **real measured year (PVGIS TMY) for Leh**, and it still shows
+  **~80% less heating across all twelve months** — which translates to **≈3,900 L of kerosene,
+  ₹3.5 lakh and ~10 t CO₂ saved per shelter, per year.** If a judge suspects the clear day is
+  cherry-picked, that's your answer: *"we checked a whole real year, clouds and all — same story."*
 - **Own the simplifications before they're attacked.** "It's a lumped RC model — that's a
   deliberate choice, and here's why" beats being cornered into admitting it.
 - **Never bluff.** If you don't know: *"We haven't measured that yet — it's in the ANSYS
@@ -169,10 +174,13 @@ end is the one page to memorise.
 > makes it converge fast and it doesn't depend on how many days you show.
 
 **Q20. Clear-sky only? Real weather has clouds and storms.**
-> Correct — we currently drive it with **clear-sky** irradiance, which is the *design* condition: the
-> coldest clear nights are when passive heating is hardest and most needed, so it's a conservative
-> stress test for comfort and a best case for solar. Adding measured or cloudy irradiance is a data
-> swap, not a model change — the engine already accepts an irradiance time-series.
+> We run **both**. The clear-sky day is the *design* condition — the coldest clear nights are when
+> passive heating is hardest, so it's a conservative stress test for comfort. But we also drive the
+> model with a **real measured year — a PVGIS Typical Meteorological Year** (clouds, real irradiance,
+> the works) for the exact site, and roll it up **month by month** in the Seasonal view. That's how we
+> know the saving holds outside the ideal day: **~80% less heating across a real Leh year**, not just
+> on a sunny afternoon. A user can also load any **EPW** weather file. Real weather was a data swap, not
+> a model change — the engine already accepted an irradiance time-series; now we feed it a measured one.
 
 **Q21. You assume steady, known material properties. They vary.**
 > Yes. We use sourced ASHRAE/handbook values and expose them in an **editable material database**, so
@@ -212,19 +220,24 @@ end is the one page to memorise.
 ## F. Inputs & data
 
 **Q26. Where does the climate data come from?**
-> Three routes: (1) built-in **region presets** (lat/long/altitude/albedo + typical winter min–max) for
-> the border sites; (2) a **typical-day generator** from just a min and max temperature — useful where
-> data is sparse; (3) **user CSV upload** of a real measured series. The engine is location-agnostic —
-> feed it any site.
+> Four routes, best-to-simplest: (1) a **real measured year** — a free **PVGIS Typical
+> Meteorological Year** fetched live for any latitude/longitude (no API key), or a **EPW** weather
+> file; (2) built-in **region presets** (lat/long/altitude/albedo + typical winter min–max) for the
+> border sites; (3) a **typical-day generator** from just a min and max temperature — for a forward
+> post with no station; (4) **user CSV** of a measured series. The engine is location-agnostic — feed
+> it any site.
 
 **Q27. Solar data — measured or modelled?**
-> Modelled with **pvlib** (Sandia): sun position and clear-sky irradiance from latitude, longitude,
-> altitude and day of year — no external data feed needed, which matters for remote posts with no
-> weather station. It accepts measured irradiance too, if available.
+> Either. If you drive it from a **PVGIS TMY or EPW**, the irradiance is **measured/satellite-derived**
+> and carried straight through. If you only have coordinates, **pvlib** (Sandia) models sun position and
+> clear-sky irradiance from latitude, longitude, altitude and day of year — no external feed needed,
+> which matters for remote posts with no weather station. Same engine; the solar input can be modelled or real.
 
 **Q28. How do you handle a site with almost no data — a forward post?**
 > That's the common case, and we designed for it: give the tool a **latitude, altitude and a typical
-> temperature range** and it generates a defensible design day. As real data arrives, drop in the CSV.
+> temperature range** and it generates a defensible design day. When you can reach a network, it will
+> also pull a free **PVGIS Typical Meteorological Year** for those exact coordinates — no station on
+> site needed. As better data arrives, drop in a CSV or EPW.
 
 ---
 
@@ -244,8 +257,9 @@ end is the one page to memorise.
 > climate). Adding a region is adding a preset, not changing code. One engine, any cold site.
 
 **Q32. Production readiness / timeline?**
-> The prototype already runs and produces all three PS outputs. Post-shortlisting: ANSYS validation,
-> a richer material database, multi-zone, and measured-weather ingestion. Months, not years.
+> The prototype already runs, produces all three PS outputs, ingests **real measured weather (PVGIS
+> TMY / EPW)** and reports the annual fuel/₹/CO₂ impact. Post-shortlisting: ANSYS validation, a richer
+> material database, and multi-zone shelters. Months, not years.
 
 ---
 
@@ -258,9 +272,12 @@ end is the one page to memorise.
 > supply lines are thin — plus warmer, safer shelters and fewer cold-injury casualties.
 
 **Q34. Quantify the benefit.**
-> Per shelter, our modelled reduction is from ~170 to ~28 kWh/day to hold 20 °C — **~140 kWh/day
-> saved**, over a months-long winter, per shelter, multiplied across a deployment. Every kWh not spent
-> is fuel not carried. And the design work itself drops from months of manual analysis to minutes.
+> On a clear design-day, from ~170 to ~28 kWh/day to hold 20 °C — **~140 kWh/day saved** per shelter.
+> Over a **real measured Leh year** it's **7,960 vs 39,814 kWh — ~32,000 kWh saved per shelter, per
+> year.** In the language the end user budgets in, that's **≈3,900 litres of kerosene not burned, ₹3.5
+> lakh saved, and ~10 tonnes of CO₂ avoided — per shelter, every year** (kerosene 10.3 kWh/L, 80% heater
+> efficiency, ₹90/L; all editable). Multiply across a deployment. Every litre not carried is a convoy that
+> doesn't run — and the design work itself drops from months of manual analysis to minutes.
 
 **Q35. Beyond defence?**
 > High-altitude civilian communities, disaster-relief shelters, and cold-climate rural housing — the
@@ -275,8 +292,9 @@ end is the one page to memorise.
 > update **live**. That responsiveness *is* the pitch: this is a design instrument, not a report.
 
 **Q37. What's the stack?**
-> Python 3.12; NumPy/SciPy/pandas for the engine; **pvlib** for solar; **Streamlit + Plotly** for the
-> live dashboard; matplotlib for figures. ANSYS for later validation.
+> Python 3.12; NumPy/SciPy/pandas for the engine; **pvlib** for solar and **PVGIS/EPW** for real
+> measured weather; **Streamlit + Plotly** for the live dashboard; matplotlib for figures. ANSYS for
+> later validation.
 
 **Q38. What if the demo crashes on stage?**
 > We have the pre-rendered figures in the deck (temperature curve, dashboard panel, regional savings)
@@ -300,8 +318,10 @@ end is the one page to memorise.
 > model behave like a real building.
 
 **Q42. What would you do with more time?**
-> ANSYS validation first, then multi-zone, measured weather, an automatic optimiser that *searches*
-> the design space, and a materials/cost layer so it optimises for money and fuel, not just comfort.
+> ANSYS validation first, then multi-zone shelters, humidity and condensation risk, and occupant/
+> equipment heat gains. Real measured weather (PVGIS TMY / EPW), an orientation-searching optimiser,
+> and the fuel/₹/CO₂ cost layer are **already in** — so more time goes on fidelity and validation, not
+> catching up to the claims.
 
 **Q43. What did you learn?**
 > That the modelling *judgment calls* — what to lump, what to resolve, which loss dominates — matter
@@ -356,7 +376,9 @@ how much sun it captures, and how much heating it needs — so you can design on
 not fuel. ANSYS validates the winner.*
 
 **Killer number:** **82–86% less heating** than a baseline hut (Leh 84% — ~28 vs ~170 kWh/day),
-across Leh / Drass / Siachen / Tawang. *(Lead with the % — it's robust. Temperature is the story, % is the proof.)*
+across Leh / Drass / Siachen / Tawang. On a **real measured Leh year**, still **~80% less** — ≈**3,900 L
+kerosene, ₹3.5 lakh and ~10 t CO₂ saved per shelter per year.** *(Lead with the % — it's robust.
+Temperature is the story, % is the proof; the fuel/₹/CO₂ is the payoff DRDO budgets in.)*
 
 **Three PS outputs we deliver:** indoor temperature over time · solar energy captured · heat-flow vs ambient.
 

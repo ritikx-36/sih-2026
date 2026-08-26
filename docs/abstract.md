@@ -16,17 +16,18 @@ Thermal-Shelter is a fast Python design tool for cold, high-altitude shelters. Y
 - **The cold sky and the snow — what quick tools ignore:** an ASHRAE sol-air driving temperature plus Berdahl–Martin long-wave sky cooling. On a clear Leh night the air is −14 °C but the sky behaves like about −45 °C; omit this and you badly over-promise warmth.
 - **Solar on every face:** pvlib computes irradiance on each wall, roof and window, including ground-reflected gain off snow at albedo 0.70.
 - **Thermal mass as a heat battery:** a water wall soaks up daytime sun and releases it after dark, carrying the room through the night.
+- **Runs on real measured weather:** drives the model with a PVGIS Typical Meteorological Year (or an EPW file) fetched live for any site — real clouds and irradiance, not an idealised clear-sky day — and reports performance month-by-month across the whole year.
 - **Sub-second runtime enables optimisation** across material, size, orientation and glazing; ANSYS is then used only to validate the winning design, not to run the design loop.
 
 ## Key Results
 
-- **82–86% less heating** than a baseline hut across four sites — Leh, Drass, Siachen, Tawang — evaluated over 5 clear winter days while holding a 20 °C setpoint.
-- **Leh: 84% less heating — 27.6 vs 170.5 kWh/day.**
+- **On a real measured year (Leh PVGIS TMY): 80% less heating** across all twelve months — **7,960 vs 39,814 kWh/year** to hold 20 °C. That saved energy is **≈3,900 litres of kerosene, ₹3.5 lakh and ~10 tonnes of CO₂ — per shelter, per year** (kerosene 10.3 kWh/L, 80% heater efficiency, ₹90/L).
+- **On a clear design-day: 82–86% less heating** than a baseline hut across four sites — Leh, Drass, Siachen, Tawang — over 5 clear winter days at a 20 °C setpoint (Leh: 84% — 27.6 vs 170.5 kWh/day).
 - Comfort is scored as the fraction of time held in the 18–24 °C band, and each full multi-day design runs in under 1 second.
 
 ## Impact
 
-The tool serves armed forces and border posts, high-altitude communities, and disaster-relief deployments. Cutting heating demand by roughly 80% or more slashes the diesel and kerosene convoy burden, lowers emissions in a fragile Himalayan ecosystem, and improves energy resilience where supply lines are thin — while shortening shelter design from months of manual analysis to minutes.
+The tool serves armed forces and border posts, high-altitude communities, and disaster-relief deployments. On a real Leh year it cuts heating by ~80% — about **3,900 fewer litres of kerosene, ₹3.5 lakh saved and ~10 tonnes of CO₂ avoided per shelter, every year** — slashing the diesel-and-kerosene convoy burden on treacherous supply lines, lowering emissions in a fragile Himalayan ecosystem, and improving energy resilience where supply lines are thin, while shortening shelter design from months of manual analysis to minutes.
 
 ## Tech stack
 

@@ -20,9 +20,15 @@ optimiser, in the order that lands best.
    reads **"This design needs 84% less heating than the baseline hut."**
    If not, hit refresh — it resets to this state.
 4. Have the sidebar **open** (the `»` / `«` toggle top-left controls it).
+5. *(For the real-weather beat)* pre-fetch the real year once, with internet, so it's
+   instant and offline-safe on the day:
+   ```bash
+   ./.venv/bin/python scripts/fetch_tmy.py
+   ```
 
-If Wi-Fi or the terminal is flaky on the day, the whole thing runs offline on
-localhost — nothing here needs the internet.
+The core demo — temperature, energy, heat-flow, optimiser — runs fully offline on
+localhost. The real-weather beat uses a real measured year that ships bundled with the
+repo, so it works offline too (it falls back to the bundled Leh year if there's no Wi-Fi).
 
 ---
 
@@ -78,20 +84,34 @@ localhost — nothing here needs the internet.
 
 *Change **Region** back to **Leh, Ladakh**.*
 
-### 2:15 — The optimiser (35 sec)
+### 2:05 — Real weather, all year (25 sec)
+*Sidebar → Climate & region → set **Weather data** to **Real TMY (PVGIS)**. Then click
+the **Seasonal** tab.*
+
+> "And this isn't just an idealised clear day. Flip to **real measured weather** — a
+> Typical Meteorological Year for Leh, clouds and all — and open the **Seasonal** tab.
+> **Every month of a real year:** red is the baseline hut, blue is our design, the green
+> line is time spent comfortable. It needs **~80% less heating year-round** — which is
+> **about 3,900 litres of kerosene, ₹3.5 lakh and 10 tonnes of CO₂ saved per shelter,
+> every year.** That's the number DRDO actually budgets in."
+
+*Switch **Weather data** back to **Synthetic clear day** before the optimiser (faster).*
+
+### 2:30 — The optimiser (30 sec)
 *Expand **"Auto-optimise — let the tool search for the best passive design"**,
 then click **"Find the best design."***
 
 > "And because each design solves in under a second, the tool can search for you.
-> This tries 24 combinations of glazing, window area, facing and thermal mass —"
+> This tries **72 combinations** of glazing, window area, facing, thermal mass **and
+> orientation** —"
 
 *Wait ~2 seconds for the result banner + table.*
 
 > "— and finds an even better one: **86% less heating** — low-e glass, windows on
-> three sides, water wall. That's the loop CFD can't do — you'd wait hours per case.
-> Here you screen hundreds in software, then validate only the winner in ANSYS."
+> three sides, water wall, facing due south. That's the loop CFD can't do — you'd wait
+> hours per case. Here you screen hundreds in software, then validate only the winner in ANSYS."
 
-### 2:50 — Close (10 sec)
+### 2:55 — Close (10 sec)
 
 > "Standard, defensible physics — ASHRAE sol-air, Berdahl–Martin sky cooling,
 > the pvlib solar model. Runs on any laptop. That's Thermal-Shelter."
@@ -107,7 +127,8 @@ likely get:
 - **"Is 9°C mean / 6% comfort not weak?"** → "That's the *free-float* run with
   **zero heating**, from a cold start — it's honestly showing the transient climb,
   not a cherry-picked converged day. The robust headline is the heating reduction:
-  84% less fuel to hold 20°C. Both are on screen."
+  **84% less to hold 20°C on a clear design-day, ~80% less across a whole real year.**
+  Both are on screen."
 - **"Why not just use ANSYS?"** → "ANSYS is hours per case — you can't design in it.
   We screen hundreds of options in seconds, then validate the winner in ANSYS.
   It's the design loop, not a replacement for CFD."
@@ -119,4 +140,6 @@ likely get:
 - Anything looks wrong → **refresh the page**; it resets to the Leh default instantly.
 - A slider stuck at a weird value → the numbers are always self-consistent, so just
   narrate what's on screen; there are no crash states (edge values tested).
-- Running long → skip the region switch (beat 1:50) and go straight to the optimiser.
+- Running long → skip the region switch (beat 1:50) or the real-weather beat (2:05) and
+  go straight to the optimiser. If you keep the real-weather beat, that's your strongest
+  impact number — drop the region switch instead.
