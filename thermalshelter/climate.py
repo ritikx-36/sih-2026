@@ -174,8 +174,16 @@ def synthetic_day(
     can settle into a periodic daily cycle). Defaults describe a clear Leh winter
     day. Every value is overridable — real measured data can be fed via `from_csv`.
     """
+    # Defensive bounds so a direct API call can't build a degenerate series:
+    # days<1 empties the index (IndexError downstream) and hour_min==hour_max
+    # gives a zero rise/fall span that divides by zero in _diurnal_temp.
+    days = max(1, int(days))
+    freq_minutes = max(1, int(freq_minutes))
+    hour_min = float(np.clip(hour_min, 0.0, 22.0))
+    hour_max = float(np.clip(hour_max, hour_min + 1.0, 23.5))
+
     start = pd.Timestamp(date, tz=location.timezone)
-    n = int(days * 24 * 60 / freq_minutes)
+    n = max(2, int(days * 24 * 60 / freq_minutes))
     index = pd.date_range(start=start, periods=n, freq=f"{freq_minutes}min")
 
     hour = index.hour.to_numpy() + index.minute.to_numpy() / 60.0

@@ -112,10 +112,14 @@ def run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, facades, or
 
 
 @st.cache_data(show_spinner=False)
-def run_baseline(geo, days, t_min, t_max, setpoint):
-    """Fixed reference: an existing-style uninsulated, leaky, single-glazed hut."""
+def run_baseline(geo, days, t_min, t_max, setpoint, L, W, H, orientation):
+    """Reference hut of the SAME size and orientation as the design, but with a
+    naive envelope: uninsulated, leaky, single-glazed. Matching the geometry keeps
+    the '% less heating' comparison honest — it isolates the envelope and passive-
+    design gains instead of conflating them with a change in shelter size."""
     clim = _climate(geo, days, t_min, t_max)
     shelter = geometry.box_shelter(
+        length=L, width=W, height=H, orientation=orientation,
         wall=geometry.UNINSULATED_STONE, roof=BARE_ROOF, floor=BARE_FLOOR,
         glazing=geometry.SINGLE_GLAZING, window_wall_ratio=0.12,
         window_facades=("S",), infiltration_ach=2.0, name="Baseline hut")
@@ -233,13 +237,25 @@ with sb.expander("Operation", expanded=False):
 # ---- run --------------------------------------------------------------- #
 d = run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, tuple(facades),
                orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high)
-b = run_baseline(geo, days, t_min, t_max, setpoint)
+b = run_baseline(geo, days, t_min, t_max, setpoint, L, W, H, orientation)
 
 m = d["metrics"]
 solar = d["energy"]["solar_windows"]              # useful solar into the room (through glass)
 incident = solar + d["energy"]["solar_opaque"]    # total sun absorbed on the whole shell
 aux, base_aux = d["aux"], b["aux"]
 saving = (1 - aux / base_aux) * 100 if base_aux else 0.0
+
+# Guard: if any headline value came back non-finite (an unstable or degenerate
+# configuration), say so clearly instead of rendering "nan" metrics, a broken
+# chart, and a meaningless optimiser ranking.
+_scalars = (m["mean"], m["night_low"], solar, aux, base_aux)
+_arrays = (d["T_in"], b["T_in"])
+if not (all(np.isfinite(v) for v in _scalars)
+        and all(np.all(np.isfinite(a)) for a in _arrays)):
+    st.error("This configuration produced non-finite values (NaN / ∞) — usually an "
+             "extreme or numerically unstable combination of inputs. Try adding thermal "
+             "mass, reducing air leakage, or shrinking the window area.")
+    st.stop()
 
 # ---- header ------------------------------------------------------------ #
 st.title("Thermal-Shelter — passive design studio")

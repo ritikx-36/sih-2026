@@ -123,7 +123,7 @@ def simulate(
 
     T_out = interp(climate.temp_air)
     dew = interp(climate.dewpoint)
-    wind = interp(climate.wind_speed)
+    wind = np.clip(interp(climate.wind_speed), 0.0, None)   # negative wind is nonphysical (would flip h_out)
     T_sky = sky_temperature(T_out, dew, cloud_fraction)
     h_out = 5.7 + 3.8 * wind                      # exterior film [W/m²K]
     T_out_K, T_sky_K = T_out + 273.15, T_sky + 273.15
@@ -190,7 +190,7 @@ def simulate(
             "name": m.name, "C": m.C, "G": m.G, "T": T_out[0],
             "pcm": m.material.is_pcm,
             "mL": (m.volume * m.material.rho * (m.material.latent_heat or 0.0)),
-            "Tp": m.material.phase_temp or 0.0, "band": m.material.phase_band,
+            "Tp": m.material.phase_temp or 0.0, "band": max(m.material.phase_band, 0.1),
         })
     sumC_store = sum(s["C"] for s in stores)   # for splitting solar across stores
 

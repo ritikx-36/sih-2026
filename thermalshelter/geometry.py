@@ -283,6 +283,16 @@ def box_shelter(
     `orientation`; the other three follow at 90° steps. Windows are placed on the
     requested cardinal facades as a fraction (`window_wall_ratio`) of that wall.
     """
+    # Defensive bounds so a direct API call can't build a degenerate shelter that
+    # later divides by zero (C_air) or goes non-physical (negative wall area) in
+    # the engine. The dashboard sliders already stay inside these ranges.
+    if min(length, width, height) <= 0.0:
+        raise ValueError(
+            f"Shelter dimensions must be positive (got {length}×{width}×{height} m)."
+        )
+    window_wall_ratio = min(max(window_wall_ratio, 0.0), 0.95)  # keep some opaque wall (mass); never negative area
+    infiltration_ach = max(infiltration_ach, 0.0)
+
     # azimuth of each wall and its gross area
     faces = {
         "front": (orientation % 360, length * height),
