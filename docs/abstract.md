@@ -1,6 +1,6 @@
 # Thermal-Shelter — a shelter that stays warm on sunlight, not fuel.
 
-**Smart India Hackathon 2026 | PS ID: 26051 | Category: Software | Theme: «Theme» | Team ID: «Your Team ID» | Team Name: «Your Team Name»**
+**Smart India Hackathon 2026 | PS ID: 26051 | Category: Software | Theme: Miscellaneous | Team ID: To be allotted after selection | Team Name: HimTaap**
 
 ## Problem
 

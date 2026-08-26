@@ -11,8 +11,9 @@ python-pptx lives on the SYSTEM interpreter here, so run:
     python3 scripts/fill_official_ppt.py
 Figures must already exist in docs/ (they do).
 
-Team ID / Team Name / Theme are the only things I can't know — they're left as
-«…» placeholders for you to fill (title page + the team-name ovals).
+Team Name (HimTaap) and Theme (Miscellaneous) are filled in. The SIH Team ID is
+only allotted after internal selection, so the title page shows "To be allotted
+after selection" for now — swap in the real portal Team ID once you have it.
 """
 import copy
 import os
@@ -110,10 +111,10 @@ fill(find(S[0], "TextBox 9").text_frame, [
     ("Problem Statement ID – 26051", 18, True, INK, 0, 0),
     ("Problem Statement Title – Software-Based Model Development for Design of "
      "Area-Specific Shelter for Thermal Comfort Maintenance", 18, True, INK, 0, 8),
-    ("Theme – «Theme, as listed against PS 26051 on the SIH portal»", 18, True, INK, 0, 8),
+    ("Theme – Miscellaneous", 18, True, INK, 0, 8),
     ("PS Category – Software", 18, True, INK, 0, 8),
-    ("Team ID – «Your Team ID»", 18, True, INK, 0, 8),
-    ("Team Name – «Your Team Name, as registered on the portal»", 18, True, INK, 0, 8),
+    ("Team ID – To be allotted after selection", 18, True, INK, 0, 8),
+    ("Team Name – HimTaap", 18, True, INK, 0, 8),
 ])
 
 # ---- Slide 1 : IDEA TITLE + Proposed Solution ----------------------------- #
@@ -237,7 +238,7 @@ for s in (S[1], S[2], S[3], S[4], S[5]):
     ov = find(s, "Oval")
     if ov is not None and ov.has_text_frame:
         ov.text_frame.paragraphs[0].runs and setattr(
-            ov.text_frame.paragraphs[0].runs[0], "text", "«Your Team Name»")
+            ov.text_frame.paragraphs[0].runs[0], "text", "HimTaap")
 
 # ---- delete the "Important Instructions" slide (index 6) ------------------ #
 sldIdLst = prs.slides._sldIdLst
