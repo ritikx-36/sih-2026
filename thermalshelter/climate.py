@@ -238,6 +238,140 @@ def from_csv(
     return ClimateSeries(location=location, data=df)
 
 
+# ---------------------------------------------------------------------------
+# Real weather ingestion (measured TMY / EPW instead of a synthetic day)
+# ---------------------------------------------------------------------------
+def _tmy_frame_to_climate(data: pd.DataFrame, location: Location) -> ClimateSeries:
+    """
+    Normalise a real weather DataFrame (PVGIS TMY or an EPW file) into a
+    `ClimateSeries` the engine can run directly.
+
+    Expects pvlib's canonical column names — temp_air, relative_humidity,
+    wind_speed, ghi, dni, dhi (`map_variables=True` / `read_epw` already produce
+    them). The index is assumed to already be in the site's LOCAL time: PVGIS is
+    hourly UTC and is converted before it reaches here; EPW is local by
+    convention. If the index is tz-naive it is localised to `location.timezone`.
+    Getting to local time matters because the annual view later averages by
+    hour-of-day — doing that in UTC would slide the solar peak by the offset
+    (5.5 h in India). Dewpoint is recomputed so it matches the rest of the model.
+    """
+    idx = data.index
+    if idx.tz is None:                       # treat a naive index as already-local
+        idx = idx.tz_localize(location.timezone)
+
+    df = pd.DataFrame(index=idx)
+    df["temp_air"] = np.asarray(data["temp_air"], dtype=float)
+    df["wind_speed"] = np.clip(np.asarray(data["wind_speed"], dtype=float), 0.0, None)
+    df["relative_humidity"] = np.clip(
+        np.asarray(data["relative_humidity"], dtype=float), 1.0, 100.0
+    )
+    df["dewpoint"] = dewpoint_from_rh(
+        df["temp_air"].to_numpy(), df["relative_humidity"].to_numpy()
+    )
+    for c in ("ghi", "dni", "dhi"):
+        df[c] = np.clip(np.asarray(data[c], dtype=float), 0.0, None)
+    return ClimateSeries(location=location, data=df.sort_index())
+
+
+def from_pvgis_tmy(location: Location, coerce_year: int = 1990) -> ClimateSeries:
+    """
+    Download a Typical Meteorological Year for `location` from PVGIS and return it
+    as a `ClimateSeries`. NETWORK — the caller usually persists the result to CSV
+    afterwards (see `scripts/fetch_tmy.py`). PVGIS is free and needs no API key.
+
+    A TMY stitches each calendar month from a different representative year, so the
+    raw index is non-monotonic; `coerce_year` stamps every row with one year to give
+    the clean, monotonic 8760-hour series the engine's `.seconds` axis consumes.
+    """
+    from pvlib import iotools   # lazy: pvlib import is heavy and only needed here
+
+    data, _meta = iotools.get_pvgis_tmy(
+        location.latitude, location.longitude,
+        map_variables=True, coerce_year=coerce_year,
+    )
+    # PVGIS returns a UTC index — move it to the site's local time before normalising.
+    if data.index.tz is None:
+        data = data.tz_localize("UTC")
+    data = data.tz_convert(location.timezone)
+    return _tmy_frame_to_climate(data, location)
+
+
+def from_epw(
+    path: str,
+    location: Optional[Location] = None,
+    albedo: float = 0.20,
+    name: Optional[str] = None,
+) -> ClimateSeries:
+    """
+    Load an EnergyPlus Weather (.epw) file — the building-simulation standard,
+    downloadable free for thousands of sites (e.g. climate.onebuilding.org). If
+    `location` is not given it is derived from the EPW header (lat/lon/altitude);
+    pass one to override the ground albedo (snow cover) or the site name. EPW
+    timestamps are in local standard time, so no timezone conversion is applied.
+    """
+    from pvlib import iotools   # lazy import
+
+    data, meta = iotools.read_epw(path)
+    if location is None:
+        location = Location(
+            name=name or str(meta.get("city", "EPW site")),
+            latitude=float(meta["latitude"]),
+            longitude=float(meta["longitude"]),
+            altitude=float(meta.get("altitude", 0.0)),
+            timezone=str(data.index.tz),   # label only; index is already tz-aware local
+            albedo=albedo,
+        )
+    return _tmy_frame_to_climate(data, location)
+
+
+def representative_day(
+    cs: ClimateSeries,
+    month: int,
+    days: int = 5,
+    ref_year: int = 1990,
+) -> ClimateSeries:
+    """
+    Reduce a full weather series to a *typical day* for one month, repeated `days`
+    times so the engine can settle into a periodic daily cycle.
+
+    Every channel — temperature, wind, humidity AND the three irradiance
+    components — is averaged by hour-of-day across that month, in local time. The
+    day is dated to the **15th of the month** because `solar.poa_on_elements`
+    recomputes the sun's position from these timestamps: the date has to place the
+    sun at the right seasonal angle, or the beam would be transposed for the wrong
+    time of year. (Averaging DNI monthly then transposing at one mid-month angle is
+    a standard, defensible approximation for a design tool.)
+    """
+    sub = cs.data[cs.data.index.month == month]
+    if sub.empty:
+        raise ValueError(f"No data for month {month} in this series.")
+
+    prof = sub.groupby(sub.index.hour).mean(numeric_only=True).reindex(range(24))
+    prof = prof.interpolate().bfill().ffill()   # guard a month missing an hour
+
+    days = int(max(1, days))
+    tz = cs.data.index.tz
+    start = pd.Timestamp(f"{ref_year}-{month:02d}-15")
+    if tz is not None:
+        start = start.tz_localize(tz)
+    index = pd.date_range(start=start, periods=24 * days, freq="60min")
+
+    def tiled(col: str) -> np.ndarray:
+        return np.tile(prof[col].to_numpy(), days)
+
+    df = pd.DataFrame(index=index)
+    df["temp_air"] = tiled("temp_air")
+    df["wind_speed"] = np.clip(tiled("wind_speed"), 0.0, None)
+    df["relative_humidity"] = np.clip(tiled("relative_humidity"), 1.0, 100.0)
+    df["dewpoint"] = dewpoint_from_rh(
+        df["temp_air"].to_numpy(), df["relative_humidity"].to_numpy()
+    )
+    for c in ("ghi", "dni", "dhi"):
+        if c in prof:
+            df[c] = np.clip(tiled(c), 0.0, None)
+    return ClimateSeries(location=cs.location, data=df)
+
+
 if __name__ == "__main__":
     cs = ladakh_winter_day(days=1)
     print(cs.summary())

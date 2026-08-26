@@ -13,11 +13,13 @@ Run:  ./.venv/bin/streamlit run app.py
 
 SIH 2026 · Problem Statement 26051 (DRDO, Software).
 """
+import os
+
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from thermalshelter import climate, comfort, engine, geometry
+from thermalshelter import annual, climate, comfort, engine, geometry, impact
 from thermalshelter.materials import get_material
 
 # --------------------------------------------------------------------------- #
@@ -50,6 +52,16 @@ BARE_FLOOR = geometry.make_construction("Bare concrete floor", [("Dense concrete
 COMFORT_LO, COMFORT_HI = 18.0, 24.0
 C_AMB, C_BASE, C_DESIGN, C_BAND, C_MASS = "#8a8a8a", "#d9534f", "#1f77b4", "#8fd19e", "#f0ad4e"
 
+# Real-weather data locations (bundled demo file is committed; the per-site cache is
+# written on the first live PVGIS fetch and is git-ignored).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(_HERE, "data")
+DATA_CACHE = os.path.join(DATA_DIR, "cache")
+BUNDLED_LEH = os.path.join(DATA_DIR, "leh_tmy.csv")
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
 
 # --------------------------------------------------------------------------- #
 #  Pure compute (no st.* here) — cached
@@ -61,7 +73,45 @@ def _location(geo):
                             altitude=alt, timezone="Asia/Kolkata", albedo=albedo)
 
 
-def _climate(geo, days, t_min, t_max):
+@st.cache_data(show_spinner="Fetching real weather (PVGIS TMY)…")
+def _fetch_tmy(geo):
+    """Real TMY for a site, cached in-session and to disk. Tries the on-disk cache,
+    then a live PVGIS download (persisted for next time), then the bundled Leh TMY as
+    offline demo insurance. Returns (ClimateSeries | None, status) where status is one
+    of "cache" | "live" | "fallback" | "error". No st.* here — it runs inside caching."""
+    name, lat, lon, alt, albedo = geo
+    loc = climate.Location(name=name, latitude=lat, longitude=lon,
+                           altitude=alt, timezone="Asia/Kolkata", albedo=albedo)
+    cache_path = os.path.join(DATA_CACHE, f"{lat:.3f}_{lon:.3f}.csv")
+    if os.path.exists(cache_path):
+        try:
+            return climate.from_csv(cache_path, loc), "cache"
+        except Exception:
+            pass
+    try:
+        cs = climate.from_pvgis_tmy(loc)             # NETWORK (first fetch per site)
+        try:
+            os.makedirs(DATA_CACHE, exist_ok=True)
+            cs.data.to_csv(cache_path, index_label="time")
+        except OSError:
+            pass
+        return cs, "live"
+    except Exception:
+        if os.path.exists(BUNDLED_LEH):
+            try:
+                return climate.from_csv(BUNDLED_LEH, climate.LEH), "fallback"
+            except Exception:
+                pass
+        return None, "error"
+
+
+def _climate(wx, geo, days, t_min, t_max):
+    if wx == "real":
+        cs_full, _status = _fetch_tmy(geo)
+        # live clip = a representative January day (the cold-design case); the full
+        # year is used by the Seasonal tab. The top-level probe already st.stop()s
+        # if no real data is available, so cs_full is not None here.
+        return climate.representative_day(cs_full, month=1, days=int(days))
     t_max = max(t_max, t_min + 1.0)          # keep the daily swing sane
     return climate.synthetic_day(_location(geo), t_min=t_min, t_max=t_max,
                                  days=int(days), freq_minutes=30)
@@ -90,10 +140,19 @@ def _build_shelter(insulated, glazing_key, wwr, facades, orientation,
         infiltration_ach=ach, thermal_mass=mass, name="Your design")
 
 
+def _baseline_shelter(L, W, H, orientation):
+    """The naive reference hut — same size/orientation as the design, poor envelope."""
+    return geometry.box_shelter(
+        length=L, width=W, height=H, orientation=orientation,
+        wall=geometry.UNINSULATED_STONE, roof=BARE_ROOF, floor=BARE_FLOOR,
+        glazing=geometry.SINGLE_GLAZING, window_wall_ratio=0.12,
+        window_facades=("S",), infiltration_ach=2.0, name="Baseline hut")
+
+
 @st.cache_data(show_spinner=False)
-def run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, facades, orientation,
+def run_design(wx, geo, days, t_min, t_max, insulated, glazing_key, wwr, facades, orientation,
                L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high):
-    clim = _climate(geo, days, t_min, t_max)
+    clim = _climate(wx, geo, days, t_min, t_max)
     shelter = _build_shelter(insulated, glazing_key, wwr, facades, orientation,
                              L, W, H, ach, mass_kind, mass_vol, mass_area)
     free = engine.simulate(shelter, clim, vent_high=vent_high)         # temperature curve
@@ -112,17 +171,13 @@ def run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, facades, or
 
 
 @st.cache_data(show_spinner=False)
-def run_baseline(geo, days, t_min, t_max, setpoint, L, W, H, orientation):
+def run_baseline(wx, geo, days, t_min, t_max, setpoint, L, W, H, orientation):
     """Reference hut of the SAME size and orientation as the design, but with a
     naive envelope: uninsulated, leaky, single-glazed. Matching the geometry keeps
     the '% less heating' comparison honest — it isolates the envelope and passive-
     design gains instead of conflating them with a change in shelter size."""
-    clim = _climate(geo, days, t_min, t_max)
-    shelter = geometry.box_shelter(
-        length=L, width=W, height=H, orientation=orientation,
-        wall=geometry.UNINSULATED_STONE, roof=BARE_ROOF, floor=BARE_FLOOR,
-        glazing=geometry.SINGLE_GLAZING, window_wall_ratio=0.12,
-        window_facades=("S",), infiltration_ach=2.0, name="Baseline hut")
+    clim = _climate(wx, geo, days, t_min, t_max)
+    shelter = _baseline_shelter(L, W, H, orientation)
     free = engine.simulate(shelter, clim)
     heated = engine.simulate(shelter, clim, heating_setpoint=setpoint)
     return {"time_days": free.time_h / 24.0, "T_in": free.T_in,
@@ -136,35 +191,55 @@ OPT_GLAZING = ["Double glazing", "Double, low-e"]
 OPT_WWR = [0.25, 0.35]
 OPT_FACADES = [("S",), ("S", "E", "W")]
 OPT_MASS = [("Water wall", 1.0, 6.0), ("Water wall", 2.0, 9.0), ("PCM (paraffin ~22 C)", 1.0, 6.0)]
+OPT_ORIENT = (135, 180, 225)                       # SE / S / SW — the useful winter arc
 FACADE_LABEL = {("S",): "S", ("S", "E", "W"): "S + E + W"}
-N_CANDIDATES = len(OPT_GLAZING) * len(OPT_WWR) * len(OPT_FACADES) * len(OPT_MASS)
+ORIENT_LABEL = {135: "135° (SE)", 180: "180° (S)", 225: "225° (SW)"}
+N_CANDIDATES = (len(OPT_GLAZING) * len(OPT_WWR) * len(OPT_FACADES)
+                * len(OPT_MASS) * len(OPT_ORIENT))
 
 
 @st.cache_data(show_spinner=False)
-def _aux_only(geo, days, t_min, t_max, glazing_key, wwr, facades,
+def _aux_only(wx, geo, days, t_min, t_max, glazing_key, wwr, facades,
               orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint):
     """Heating demand (kWh/day) for one candidate — a single heated simulation."""
-    clim = _climate(geo, days, t_min, t_max)
+    clim = _climate(wx, geo, days, t_min, t_max)
     shelter = _build_shelter(True, glazing_key, wwr, facades, orientation,
                              L, W, H, ach, mass_kind, mass_vol, mass_area)
     return engine.simulate(shelter, clim, heating_setpoint=setpoint).energy_per_day()["aux_heating"]
 
 
 @st.cache_data(show_spinner=False)
-def optimize(geo, days, t_min, t_max, orientation, L, W, H, ach, setpoint):
-    """Rank passive-envelope options by heating demand, lowest first. Site,
-    geometry and air-leakage stay at the user's values; insulated envelope assumed."""
+def optimize(wx, geo, days, t_min, t_max, L, W, H, ach, setpoint):
+    """Rank passive options by heating demand, lowest first. Site, size and air-leakage
+    stay at the user's values; the search spans glazing, window area & facades, thermal
+    mass AND orientation (insulated envelope assumed)."""
     out = []
-    for g in OPT_GLAZING:
-        for wwr in OPT_WWR:
-            for fac in OPT_FACADES:
-                for mk, mv, ma in OPT_MASS:
-                    aux = _aux_only(geo, days, t_min, t_max, g, wwr, fac,
-                                    orientation, L, W, H, ach, mk, mv, ma, setpoint)
-                    out.append(dict(glazing=g, wwr=wwr, facades=fac,
-                                    mass_kind=mk, mass_vol=mv, mass_area=ma, aux=aux))
+    for ori in OPT_ORIENT:
+        for g in OPT_GLAZING:
+            for wwr in OPT_WWR:
+                for fac in OPT_FACADES:
+                    for mk, mv, ma in OPT_MASS:
+                        aux = _aux_only(wx, geo, days, t_min, t_max, g, wwr, fac,
+                                        ori, L, W, H, ach, mk, mv, ma, setpoint)
+                        out.append(dict(glazing=g, wwr=wwr, facades=fac, orientation=ori,
+                                        mass_kind=mk, mass_vol=mv, mass_area=ma, aux=aux))
     out.sort(key=lambda x: x["aux"])
     return out
+
+
+@st.cache_data(show_spinner=False)
+def run_annual(geo, insulated, glazing_key, wwr, facades, orientation,
+               L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high, days):
+    """Month-by-month heating & comfort for the current design vs the baseline, using
+    the site's real TMY. Heavy (12 months × 3 sims) but ~1 s and cached per design."""
+    cs_full, _status = _fetch_tmy(geo)
+    if cs_full is None:
+        return None
+    design = _build_shelter(insulated, glazing_key, wwr, facades, orientation,
+                            L, W, H, ach, mass_kind, mass_vol, mass_area)
+    baseline = _baseline_shelter(L, W, H, orientation)
+    return annual.annual_profile(cs_full, design, baseline, setpoint,
+                                 vent_high=vent_high, days=int(days))
 
 
 # --------------------------------------------------------------------------- #
@@ -200,9 +275,24 @@ with sb.expander("Climate & region", expanded=True):
         loc_name = site_label = region_key
         def_tmin, def_tmax = r["t_min"], r["t_max"]
     geo = (loc_name, lat, lon, alt, albedo)
+
+    wx_label = st.radio(
+        "Weather data", ["Synthetic clear day", "Real TMY (PVGIS)"],
+        index=0, horizontal=True,
+        help="Synthetic = one idealized clear day from your sliders (fast, always available). "
+             "Real TMY = a Typical Meteorological Year measured for this site (real clouds and "
+             "irradiance), fetched live from PVGIS and cached — this also unlocks the Seasonal tab.")
+    wx = "real" if wx_label.startswith("Real") else "synthetic"
+
     days = st.slider("Days simulated", 1, 7, 5)
-    t_min = st.slider("Coldest night (°C)", -40.0, 5.0, def_tmin, 1.0, key=f"tmin_{region_key}")
-    t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, def_tmax, 1.0, key=f"tmax_{region_key}")
+    if wx == "synthetic":
+        t_min = st.slider("Coldest night (°C)", -40.0, 5.0, def_tmin, 1.0, key=f"tmin_{region_key}")
+        t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, def_tmax, 1.0, key=f"tmax_{region_key}")
+    else:
+        t_min, t_max = def_tmin, def_tmax
+        st.caption("Real-TMY mode: indoor results use measured hourly weather (a representative "
+                   "January day here); the temperature sliders apply to the synthetic day only. "
+                   "See the **Seasonal** tab for the full year.")
 
 with sb.expander("Envelope", expanded=True):
     insulated = st.radio("Construction", ["Well-insulated", "Uninsulated"],
@@ -235,9 +325,20 @@ with sb.expander("Operation", expanded=False):
     vent_high = st.slider("Vent when above (°C)", 22.0, 30.0, 24.0, 0.5) if do_vent else None
 
 # ---- run --------------------------------------------------------------- #
-d = run_design(geo, days, t_min, t_max, insulated, glazing_key, wwr, tuple(facades),
+# Real-weather probe: prime the (cached) TMY fetch once so a status message can be
+# shown at the top level, and stop early with a clear message if none is available.
+tmy_status = None
+if wx == "real":
+    _tmy_cs, tmy_status = _fetch_tmy(geo)
+    if _tmy_cs is None:
+        st.error("Real weather is unavailable: PVGIS was unreachable and no cached or bundled "
+                 "TMY was found. Run `python scripts/fetch_tmy.py` once with internet access to "
+                 "cache it, or switch **Weather data** back to *Synthetic clear day*.")
+        st.stop()
+
+d = run_design(wx, geo, days, t_min, t_max, insulated, glazing_key, wwr, tuple(facades),
                orientation, L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint, vent_high)
-b = run_baseline(geo, days, t_min, t_max, setpoint, L, W, H, orientation)
+b = run_baseline(wx, geo, days, t_min, t_max, setpoint, L, W, H, orientation)
 
 m = d["metrics"]
 solar = d["energy"]["solar_windows"]              # useful solar into the room (through glass)
@@ -263,6 +364,13 @@ st.caption(f"Design an area-specific shelter for {site_label} and see how warm i
            "and how little heating it needs — against a baseline hut.  "
            "SIH 2026 · PS 26051 (DRDO, Software).")
 
+if wx == "real" and tmy_status == "live":
+    st.caption(f"Live PVGIS Typical Meteorological Year for {site_label} — cached for next time.")
+elif wx == "real" and tmy_status == "cache":
+    st.caption(f"Measured PVGIS Typical Meteorological Year for {site_label} (cached).")
+elif wx == "real" and tmy_status == "fallback":
+    st.warning("PVGIS was unreachable — showing the **bundled Leh TMY** as a stand-in for this site.")
+
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Mean indoor (°C)", f"{m['mean']:.1f}")
 k2.metric("Coldest night (°C)", f"{m['night_low']:.1f}")
@@ -276,6 +384,13 @@ k5.metric("Heating needed (kWh/day)", f"{aux:.1f}",
 if base_aux and saving >= 0:
     st.success(f"**This design needs {saving:.0f}% less heating than the baseline hut** "
                f"to hold {setpoint:.0f} °C  ({aux:.1f} vs {base_aux:.1f} kWh/day).")
+    fi = impact.fuel_impact(base_aux - aux)
+    st.caption(
+        f"That is about **{fi.litres:.1f} L of kerosene, ₹{fi.inr:,.0f} and {fi.co2_kg:.1f} kg CO₂ "
+        f"saved per day** — roughly **{fi.litres * impact.WINTER_DAYS:,.0f} L, "
+        f"₹{fi.inr * impact.WINTER_DAYS:,.0f} and {fi.co2_kg * impact.WINTER_DAYS / 1000:.1f} t CO₂** "
+        f"over a {impact.WINTER_DAYS}-day winter "
+        f"(heater at {impact.HEATER_EFFICIENCY * 100:.0f}% efficiency, ₹{impact.INR_PER_L:.0f}/L).")
 elif base_aux:
     st.warning(f"This design needs **{-saving:.0f}% more** heating than the baseline "
                f"({aux:.1f} vs {base_aux:.1f} kWh/day) — try more insulation, south glazing, or mass.")
@@ -284,17 +399,22 @@ elif base_aux:
 with st.expander("Auto-optimise — let the tool search for the best passive design", expanded=False):
     st.caption(f"Holds your current site, size ({L:.0f}×{W:.0f}×{H:.1f} m) and air-leakage "
                f"fixed, then simulates {N_CANDIDATES} combinations of glazing, window area, window "
-               f"facades and thermal mass to find the one that needs the least heating "
-               f"(insulated envelope assumed).")
+               f"facades, thermal mass and orientation to find the one that needs the least "
+               f"heating (insulated envelope assumed).")
     if st.button("Find the best design", type="primary"):
         with st.spinner(f"Simulating {N_CANDIDATES} candidate designs…"):
-            ranked = optimize(geo, days, t_min, t_max, orientation, L, W, H, ach, setpoint)
+            ranked = optimize(wx, geo, days, t_min, t_max, L, W, H, ach, setpoint)
         best = ranked[0]
         best_saving = (1 - best["aux"] / base_aux) * 100 if base_aux else 0.0
         st.success(
             f"**Best design — {best['glazing']}, {best['wwr'] * 100:.0f}% windows on "
-            f"{FACADE_LABEL[best['facades']]}, {best['mass_kind']} {best['mass_vol']:.1f} m³**  →  "
+            f"{FACADE_LABEL[best['facades']]}, facing {ORIENT_LABEL[best['orientation']]}, "
+            f"{best['mass_kind']} {best['mass_vol']:.1f} m³**  →  "
             f"**{best['aux']:.1f} kWh/day**, {best_saving:.0f}% less heating than the baseline hut.")
+        if base_aux:
+            fib = impact.fuel_impact(base_aux - best["aux"])
+            st.caption(f"≈ **{fib.litres:.1f} L kerosene · ₹{fib.inr:,.0f} · {fib.co2_kg:.1f} kg CO₂** "
+                       f"saved per day versus the baseline hut.")
         delta = aux - best["aux"]
         if delta > 0.1:
             st.caption(f"That is **{delta:.1f} kWh/day less** than the design currently on screen "
@@ -304,6 +424,7 @@ with st.expander("Auto-optimise — let the tool search for the best passive des
         st.dataframe(
             [{"Glazing": r["glazing"],
               "Windows": f"{r['wwr'] * 100:.0f}% {FACADE_LABEL[r['facades']]}",
+              "Facing": ORIENT_LABEL[r["orientation"]],
               "Thermal mass": f"{r['mass_kind']} {r['mass_vol']:.1f} m³",
               "Heating (kWh/day)": round(r["aux"], 1),
               "vs baseline": f"{(1 - r['aux'] / base_aux) * 100:.0f}% less" if base_aux else "—"}
@@ -311,13 +432,19 @@ with st.expander("Auto-optimise — let the tool search for the best passive des
             hide_index=True, width="stretch")
 
 # ---- tabs -------------------------------------------------------------- #
-tab_t, tab_e, tab_f = st.tabs(["Temperature", "Energy balance", "Heat-flow over time"])
+tab_t, tab_e, tab_f, tab_s = st.tabs(
+    ["Temperature", "Energy balance", "Heat-flow over time", "Seasonal (all year)"])
 
 with tab_t:
     fig = go.Figure()
     fig.add_hrect(y0=COMFORT_LO, y1=COMFORT_HI, fillcolor=C_BAND, opacity=0.25,
                   line_width=0, annotation_text="comfort band", annotation_position="top left")
     fig.add_hline(y=0, line_color="#cccccc", line_width=1)
+    # subtle night shading (18:00–08:00) so the post-sunset crash reads at a glance
+    _tmax = float(d["time_days"][-1])
+    for _k in range(int(np.ceil(_tmax)) + 1):
+        fig.add_vrect(x0=_k + 18.0 / 24.0, x1=_k + 1 + 8.0 / 24.0,
+                      fillcolor="#3a4a63", opacity=0.05, line_width=0, layer="below")
     fig.add_trace(go.Scatter(x=d["time_days"], y=d["T_out"], name="ambient air",
                              line=dict(color=C_AMB, dash="dash", width=1.5)))
     fig.add_trace(go.Scatter(x=b["time_days"], y=b["T_in"], name="baseline hut",
@@ -327,6 +454,14 @@ with tab_t:
                                  line=dict(color=C_MASS, dash="dashdot", width=1.4), opacity=0.75))
     fig.add_trace(go.Scatter(x=d["time_days"], y=d["T_in"], name="your design",
                              line=dict(color=C_DESIGN, width=3)))
+    # mark the design's coldest point on the settled final day (the "money moment")
+    _tin, _td = np.asarray(d["T_in"]), np.asarray(d["time_days"])
+    _mask = _td >= (_td[-1] - 1.0)
+    if _mask.any():
+        _j = np.where(_mask)[0][int(np.argmin(_tin[_mask]))]
+        fig.add_annotation(x=_td[_j], y=_tin[_j], text=f"night low {_tin[_j]:.1f} °C",
+                           showarrow=True, arrowhead=2, ax=0, ay=32,
+                           font=dict(color=C_DESIGN, size=12), arrowcolor=C_DESIGN)
     fig.update_layout(height=470, xaxis_title="day", yaxis_title="temperature (°C)",
                       legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
                       margin=dict(l=10, r=10, t=10, b=10))
@@ -378,6 +513,54 @@ with tab_f:
     st.plotly_chart(fig3, width="stretch")
     st.caption("Positive = heat flowing into the room, negative = heat leaving. Watch solar spike "
                "by day and the thermal-mass line turn positive after sunset as the store discharges.")
+
+with tab_s:
+    if wx != "real":
+        st.info("Switch **Weather data** to *Real TMY (PVGIS)* in the sidebar to simulate the "
+                "shelter across all 12 months of a Typical Meteorological Year for this site.")
+    else:
+        st.caption("Month-by-month heating demand and comfort, each from a representative day of "
+                   "the site's measured TMY. This is the proof the shelter performs **all year**, "
+                   "not just on the coldest design day.")
+        if st.button("Run annual simulation (12 months)", type="primary"):
+            with st.spinner("Simulating 12 representative days…"):
+                prof = run_annual(geo, insulated, glazing_key, wwr, tuple(facades), orientation,
+                                  L, W, H, ach, mass_kind, mass_vol, mass_area,
+                                  setpoint, vent_high, days)
+            if not prof:
+                st.error("Annual run unavailable — no real weather for this site.")
+            else:
+                da, ba = np.array(prof["design_aux"]), np.array(prof["baseline_aux"])
+                cf = np.array(prof["comfort"]) * 100.0
+                figs = go.Figure()
+                figs.add_trace(go.Bar(x=MONTHS, y=ba, name="baseline hut", marker_color=C_BASE))
+                figs.add_trace(go.Bar(x=MONTHS, y=da, name="your design", marker_color=C_DESIGN))
+                figs.add_trace(go.Scatter(x=MONTHS, y=cf, name="time comfortable (%)",
+                                          yaxis="y2", mode="lines+markers",
+                                          line=dict(color=C_MASS, width=2.5)))
+                figs.update_layout(
+                    height=470, barmode="group", xaxis_title="month",
+                    yaxis=dict(title="heating (kWh/day)"),
+                    yaxis2=dict(title="time comfortable (%)", overlaying="y", side="right",
+                                range=[0, 100], showgrid=False),
+                    legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
+                    margin=dict(l=10, r=10, t=10, b=10))
+                st.plotly_chart(figs, width="stretch")
+
+                # annual totals: weight each month's daily figure by that month's length
+                design_yr = float(np.dot(da, DAYS_IN_MONTH))
+                base_yr = float(np.dot(ba, DAYS_IN_MONTH))
+                fi = impact.fuel_impact(base_yr - design_yr)
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Heating saved / year", f"{base_yr - design_yr:,.0f} kWh")
+                c2.metric("Kerosene saved / year", f"{fi.litres:,.0f} L")
+                c3.metric("CO₂ avoided / year", f"{fi.co2_kg / 1000:.1f} t")
+                st.caption(
+                    f"Over a full year this design needs **{design_yr:,.0f} kWh** of heating vs "
+                    f"**{base_yr:,.0f} kWh** for the baseline hut — about "
+                    f"**{fi.litres:,.0f} L of kerosene and ₹{fi.inr:,.0f}** saved. Winter months "
+                    f"carry the load; summer sits near zero. The comfort line is the share of each "
+                    f"representative day the free-floating design stays within 18–24 °C.")
 
 with st.expander("Shelter details"):
     st.text(d["summary"])

@@ -34,11 +34,17 @@ exactly the three things the problem statement asks for:
 …then lets you **compare designs** and search material, shape, size and orientation for the
 **most thermally efficient** shelter — one that needs minimal (ideally zero) active heating.
 
+It runs on **real measured weather** (a PVGIS Typical Meteorological Year or an EPW file,
+fetched live for any site), shows how the design performs **month-by-month across the year**,
+and translates the heating saved into **litres of kerosene, ₹ and CO₂** — the terms a remote
+high-altitude post actually budgets in.
+
 ## Why it's different
 
 | | |
 |---|---|
 | **Transient, not static** | Models the full day–night cycle, so it captures the night-time drop that actually breaks comfort — not just an average. |
+| **Runs on real measured weather** | Pulls a Typical Meteorological Year (PVGIS) or an EPW for any site — real clouds and irradiance, not an idealized clear-sky curve — so the annual numbers are honest, not best-case. |
 | **Night-sky radiative cooling** | The hidden loss most tools ignore. On a clear Leh night the air is −14 °C but the sky "sees" ≈ −45 °C — model it or you badly over-predict comfort. |
 | **Thermal-mass battery** | Simulates stone, water walls and phase-change materials that soak up daytime sun and release it after dark. |
 | **Fast enough to optimize** | Each design solves in **< 1 s** — sweep hundreds of options, then validate the winner in ANSYS. CFD takes hours per case. |
@@ -64,6 +70,14 @@ against a baseline hut in real time:
 
 ```bash
 .venv/bin/streamlit run app.py
+```
+
+Toggle **Weather data → Real TMY (PVGIS)** in the sidebar to drive the model with a real
+measured year for the site (fetched live and cached), then open the **Seasonal** tab for the
+month-by-month picture. To guarantee it works offline at a demo, pre-fetch the year once:
+
+```bash
+.venv/bin/python scripts/fetch_tmy.py
 ```
 
 ## How it works
@@ -92,13 +106,16 @@ just packaged into a fast tool a non-specialist can drive.
 ```
 thermalshelter/     core physics package
   materials.py      material thermal-property database          (done)
-  climate.py        climate — Ladakh presets + user CSV         (done)
+  climate.py        climate — presets + real PVGIS TMY / EPW / CSV (done)
   solar.py          solar irradiance on each surface (pvlib)    (done)
   geometry.py       shelter geometry & envelope                 (done)
   engine.py         transient RC thermal model — the core       (done)
   comfort.py        comfort metrics                             (done)
+  annual.py         month-by-month seasonal performance         (done)
+  impact.py         fuel / ₹ / CO₂ translation of energy saved  (done)
 app.py              Streamlit dashboard — the interactive demo   (done)
 scripts/run_demo.py baseline-vs-passive demo → docs/demo_curve.png
+scripts/fetch_tmy.py pre-fetch a real PVGIS TMY → data/*.csv (offline demo)
 docs/               figures used in this README
 ```
 
@@ -109,12 +126,13 @@ docs/               figures used in this README
 | Physics engine — climate, solar (pvlib), transient RC model, comfort metrics | **Done** |
 | Demo — baseline vs passive over a multi-day Ladakh winter | **Done** |
 | Interactive dashboard — design a shelter live for any cold-region site | **Done** |
-| Design comparison + optimizer | Planned |
-| ANSYS cross-validation & real Ladakh climate data | Planned |
+| Design comparison + optimizer — envelope, glazing, mass **and orientation**, ranked by fuel / ₹ / CO₂ | **Done** |
+| Real weather — PVGIS TMY / EPW, live per-site fetch, month-by-month annual view | **Done** |
+| ANSYS cross-validation | Planned |
 
 ## Tech stack
 
-Python 3.12 · NumPy / SciPy · pandas · **pvlib** (solar) · **Streamlit** + Plotly (dashboard) · matplotlib
+Python 3.12 · NumPy / SciPy · pandas · **pvlib** (solar + real-weather TMY/EPW) · **Streamlit** + Plotly (dashboard) · matplotlib
 
 ## References
 
