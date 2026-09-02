@@ -17,6 +17,7 @@ Thermal-Shelter is a fast Python design tool for cold, high-altitude shelters. Y
 - **Solar on every face:** pvlib computes irradiance on each wall, roof and window, including ground-reflected gain off snow at albedo 0.70.
 - **Thermal mass as a heat battery:** a water wall soaks up daytime sun and releases it after dark, carrying the room through the night.
 - **Runs on real measured weather:** drives the model with a PVGIS Typical Meteorological Year (or an EPW file) fetched live for any site — real clouds and irradiance, not an idealised clear-sky day — and reports performance month-by-month across the whole year.
+- **Verified against closed-form limits:** the solver reproduces a textbook UA·ΔT steady-state load and closes the first law (both exact to rounding), tracks an *independent* SciPy integration of the same network to 0.006 °C, and is grid-converged — so the results are the physics, not solver artefacts (`python scripts/validate.py`).
 - **Sub-second runtime enables optimisation** across material, size, orientation and glazing; ANSYS is then used only to validate the winning design, not to run the design loop.
 
 ## Key Results

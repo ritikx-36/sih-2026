@@ -133,13 +133,32 @@ end is the one page to memorise.
 ## C. Validation — "how do you know it's right?"
 
 **Q15. Have you validated this against anything? Isn't it just numbers?**
-> Three layers. (1) **Physics provenance** — every sub-model is a published, peer-reviewed correlation:
-> ASHRAE sol-air, Berdahl–Martin sky, pvlib (Sandia National Labs) solar. We didn't invent the physics.
-> (2) **Sanity/behavioural tests** — the model does what physics demands: turn off insulation and the
-> gap to the baseline collapses; remove the night-sky term and nights get warmer; shrink the windows
-> and solar gain drops. It responds correctly to every lever. (3) **ANSYS cross-validation** is the
-> planned high-fidelity check on the winning design. For a shortlisting-stage prototype, provenance +
-> correct behaviour is the honest, defensible position.
+> We separate two things people often ask as one: **verification** ("did we solve the model
+> correctly?") and **validation** ("does the model match the real world?"). Four layers — and the first
+> three are done and reproducible with one command, `python scripts/validate.py`, which prints a
+> PASS/FAIL table and writes the figure on the validation slide.
+>
+> (1) **Physics provenance** — every sub-model is a published, peer-reviewed correlation: ASHRAE
+> sol-air, Berdahl–Martin sky, pvlib (Sandia National Labs) solar. We didn't invent the physics.
+>
+> (2) **Numerical verification against closed-form limits** — four checks. *Two are exact:* with the sun
+> and sky switched off, the settled heating load reproduces a textbook **UA·ΔT** hand calculation
+> (UA = 42.4 W/K) to rounding, and the **first law closes** — energy stored equals net heat across the
+> envelope — to rounding. That proves the loss coefficients and the energy accounting are *right*, not
+> just plausible. *Two use a genuinely independent solver:* the full 3-day transient tracks a **SciPy
+> RK45 integration** of the same RC network to a **max error of 0.006 °C**, and the result is
+> **grid-converged** — our shipped 60-second step sits **0.01% from the dt→0 limit**. So the answer is
+> the physics, not an artefact of the time step.
+>
+> (3) **Behavioural tests** — the model responds correctly to every lever: kill insulation and the gap
+> to the baseline collapses; remove the night-sky term and nights get warmer; shrink the windows and
+> solar gain drops.
+>
+> (4) **ANSYS / EnergyPlus cross-validation** — the planned high-fidelity, right-vs-reality check on the
+> *winning* design. That is validation; layers 1–3 are verification, and they're already in the repo.
+>
+> So it isn't "just numbers": the numerics are provably correct against cases we can solve by hand, and
+> every correlation is sourced.
 
 **Q16. Your baseline needs ~170 kWh/day and your design ~28 kWh/day. Those absolute numbers — are they real?**
 > The **relative** reduction is the robust result; absolute kWh depends on assumptions (infiltration,
@@ -382,7 +401,7 @@ Temperature is the story, % is the proof; the fuel/₹/CO₂ is the payoff DRDO 
 
 **Three PS outputs we deliver:** indoor temperature over time · solar energy captured · heat-flow vs ambient.
 
-**Model:** lumped RC thermal network, transient, 30-min steps → indoor temp; second run pins 20 °C → heating kWh/day.
+**Model:** lumped RC thermal network, transient, 60-second integration steps → indoor temp; second run pins 20 °C → heating kWh/day.
 
 **Three physics we get right that others miss:**
 1. **Cold night sky** (air −14 °C, sky ≈ −45 °C) — Berdahl–Martin.
@@ -394,6 +413,10 @@ Temperature is the story, % is the proof; the fuel/₹/CO₂ is the payoff DRDO 
 
 **Provenance (say the names):** ASHRAE (sol-air, U/SHGC) · Berdahl–Martin 1984 (sky) · pvlib/Sandia
 (solar) · Balcomb/DOE (passive solar) · DRDO-DIHAR (context).
+
+**Verification (say the numbers):** `python scripts/validate.py` — UA·ΔT hand-calc and first-law
+closure exact to rounding; transient matches an independent SciPy RK45 solver to **0.006 °C**;
+grid-converged (60 s step within **0.01%** of dt→0). Verification is done; ANSYS is validation, next.
 
 **Honest limits (own them):** single-zone, clear-sky, lumped (no spatial detail) — all deliberate for
 speed, all addressed by the ANSYS validation phase.
