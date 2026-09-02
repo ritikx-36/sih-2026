@@ -119,9 +119,13 @@ end is the one page to memorise.
 > in the PS: temperature over time, and energy.
 
 **Q13. What's the time-stepping scheme? Is it stable?**
-> Explicit Euler at a **30-minute step**. With our capacitances and resistances that's comfortably
-> inside the stability limit (the thermal time constants are hours, not minutes). We've checked that
-> halving the step doesn't change the daily results — so we're resolved, not riding the stability edge.
+> Explicit Euler at a **60-second step** (the climate *data* may be coarser — e.g. 30-minute PVGIS —
+> and is interpolated onto the 60 s grid). Stability is set by the **fastest** node — the room air,
+> which has a small heat capacity and a time constant of a few minutes — not the heavy envelope mass.
+> A 60 s step sits well inside the explicit-Euler limit for that fast node, with roomy margin. And we
+> don't just assert it: pushing the step toward zero moves the daily result by only **~0.01%**, so
+> we're resolved, not riding the stability edge. (The envelope mass's *hours*-long time constant is
+> what makes the building coast through the night — a different quantity from the stability limit.)
 
 **Q14. What about the ventilation logic — why is it there?**
 > Real passive-solar buildings **vent excess heat** on sunny afternoons or they'd cook. When indoor
@@ -379,15 +383,210 @@ end is the one page to memorise.
 > quick tools do) is a real error for this climate.
 
 **Q49. "Isn't explicit Euler crude? Why not implicit / a real ODE solver?"**
-> For these time constants (hours) at a 30-minute step, explicit Euler is stable and accurate — we
-> confirmed by step-halving. An implicit solver buys nothing here and costs simplicity and speed. If we
-> ever add very light, fast-responding nodes we'd switch; today it's the right tool.
+> At a 60-second step it's stable and accurate here. The binding (air-node) time constant is minutes,
+> not seconds, so 60 s is well inside the explicit limit; we confirmed convergence by step-halving
+> (within **0.01%** of the dt→0 limit) and cross-checked the full transient against an independent
+> SciPy RK45 integration of the same network (agreement to **0.006 °C** — see Q15). An implicit solver
+> buys nothing here and costs simplicity and speed. If we ever add very light, fast-responding nodes
+> we'd switch; today it's the right tool.
 
 **Q50. "What's your unfair advantage over the next team with the same PS?"**
 > We resisted the **ANSYS trap** — we understood the category is *Software* and the deliverable is a
 > *design tool*, so we built something fast, interactive and honest, with the region-specific physics
 > that this cold-sky, snow-albedo problem actually needs, and a clear validation path into ANSYS. Most
 > teams will either drown in ANSYS setup or hand-wave the night physics. We did neither.
+
+---
+
+## L. Sharpest attacks — the four to rehearse hardest
+
+*(These are the questions our model is genuinely softest on. Own them out loud before a
+judge does. Each one has a clean, honest answer — memorise these four.)*
+
+**Q51. Do you model body heat and equipment? Four soldiers and a stove put out real heat.**
+> No — and deliberately. The air-node energy balance sums **envelope conduction, window
+> conduction, infiltration, transmitted solar, and storage exchange** — nothing else. We don't
+> yet count occupant or equipment gains. That error only runs **one way**: a person adds ~100 W
+> sensible, a stove far more, so leaving them out makes our heating estimate **conservative** —
+> the real shelter needs *less* auxiliary heat than we quote, never more. It's a one-line
+> additive term we can switch on (see Q23); we left it off precisely so no one can accuse us of
+> padding the passive design with free body heat. If anything, we're under-selling it.
+
+**Q52. Isn't this a strawman? Your best insulated, solar-glazed, water-wall design against the worst leaky hut you could find.**
+> The baseline isn't invented to lose — it's the **stone hut actually deployed** in these
+> regions today: uninsulated, single-glazed, ~2 air-changes/hour. Both designs run through the
+> **same engine, on the same real measured Leh year** (continuous 8,760 h), both pinned to 20 °C,
+> so the *only* thing that differs is the design — which is the entire point of a comparison. If
+> you suspect the year is kind, note the **clear design-day figure is the more conservative one:
+> 84%, not 93%.** And the honest anchor isn't the percentage at all — it's the **absolute
+> saving: ~29,000 kWh ≈ 3,550 L of kerosene per shelter per year** that someone physically hauls
+> up the pass. That number doesn't care how you frame the baseline. (See Q16, Q17.)
+
+**Q53. Why should I trust two nodes? A wall isn't one temperature.**
+> A lumped RC network is the **standard reduced-order method for whole-building energy** — the
+> ISO 13790 / 5R1C family, used inside national energy codes. Two nodes (room air + envelope
+> mass, plus optional storage) capture the dynamics that *set* heating demand: the fast air
+> response and the slow envelope/mass storage that carries the night. It deliberately does **not**
+> resolve a temperature field — stratification, drafts, the cold corner — and we don't pretend it
+> does; that's exactly the job we hand to ANSYS on the one winning design (Q2, Q18). The trade is
+> intentional: **~1000× faster**, so we search hundreds of designs instead of hand-solving one —
+> and we proved the solver is *right*, not just fast (`scripts/validate.py`: UA·ΔT and first-law
+> exact to rounding, an independent RK45 to 0.006 °C, grid-converged — see Q15).
+
+**Q54. Why a simple 18–24 °C band? Real thermal comfort is PMV/PPD — Fanger, ASHRAE 55.**
+> Because for **dry, cold-climate heating-demand screening**, operative-temperature band +
+> kWh-to-setpoint *is* the decision-relevant metric — it's what sizes the heater and the fuel
+> convoy. PMV/PPD needs humidity, air velocity, clothing (clo) and metabolic rate (met); those
+> inputs dominate **hot-humid cooling** comfort, where "it's 26 °C but feels like 32" is the whole
+> story. At −20 °C outside, the binding question isn't perceived-comfort nuance — it's "can we
+> hold 20 °C, and on how much fuel." PMV is a natural extension (we already carry the operative
+> temperatures; add clo/met/RH and it drops in) — a refinement for a different regime, not a gap
+> in this one. (See Q46 for why the band and setpoint are user-adjustable.)
+
+---
+
+## M. Code & software-engineering (the SPOC / developer-judge grilling)
+
+*The physics is above; these are the questions about the **software itself** — what a SPOC or a
+developer on the panel asks once they're past "is it yours." Numbers here are measured, not
+remembered.*
+
+**Q55. Is this your own code, or lifted from GitHub?**
+> The building physics is ours — the RC engine, the sol-air/night-sky formulation, the solar-to-mass
+> split, the whole data model. What we *don't* reinvent is well-known science with a trusted
+> implementation: **pvlib** (Sandia National Labs) for solar position and clear-sky irradiance,
+> NumPy/SciPy/pandas for arrays and integration, Streamlit/Plotly for the UI. That's the honest line:
+> we didn't rewrite solar ephemeris, we wrote the shelter model. It's a clean **1,552-line** package
+> you can read end to end — happy to open any file.
+
+**Q56. Walk me through the repository.**
+> Nine modules under `thermalshelter/`, layered so each depends only on those below it:
+> `materials` (property DB) → `geometry` (shelter/wall/window data model) → `solar` + `climate` (the
+> forcings) → `engine` (the transient solver) → `comfort`/`annual`/`impact` (metrics on top).
+> `app.py` is the Streamlit UI; `scripts/` holds the demo, the verification suite, and the figure
+> generators. Nothing in the physics package imports Streamlit — the engine runs headless.
+
+**Q57. Show me where the physics actually happens.**
+> One place: the time-march loop at `engine.py:210`. Each step solves the air-node energy balance —
+> `engine.py:230`: `Q_air = Q_env + Q_wc + Q_if + Q_sol_air + Q_st` (envelope + window + infiltration
+> + solar + storage). Everything above the loop is vectorized pre-compute; the loop is the integrator.
+
+**Q58. Show me your module dependencies — any circular imports?**
+> None. The layering is strictly one-directional (`materials` ← `geometry` ← `solar`/`climate` ←
+> `engine` ← `annual`/`comfort`/`impact` ← `app.py`); nothing lower imports something higher. That's
+> why the engine runs headless and the UI is a thin, removable skin.
+
+**Q59. What's your core data structure?**
+> A dataclass hierarchy in `geometry.py`: a `Layer` (material + thickness) stacks into a
+> `Construction`, which computes its own U-value and — the key move — splits at its mid-plane into
+> `R_outer`/`R_inner` so a single lumped mass node can sit inside the wall and store daytime heat.
+> `Surface`/`Window`/`ThermalMass` compose into a `Shelter`; `box_shelter(...)` assembles a whole
+> oriented shelter in one call for the UI and the optimiser.
+
+**Q60. Why dataclasses and `@property` everywhere?**
+> So every derived quantity lives next to its definition and can't drift — `Construction.U`,
+> `Surface.UA`, `ThermalMass.C` are computed properties, one source of truth. The mutable list fields
+> (`windows`, `thermal_mass`) use `field(default_factory=list)`, so there's no shared-mutable-default
+> bug; the value objects that shouldn't change (`Layer`, `Glazing`) are `frozen=True`. Small details,
+> but they signal the code was written by someone who knows the language.
+
+**Q61. Explicit Euler — how do you know a 60-second step is stable, not just lucky?**
+> Stability is set by the **fastest** node — the room air (small heat capacity, time constant of a few
+> minutes) — not the heavy envelope mass whose constant is hours. A 60 s step sits well inside the
+> explicit-Euler limit for that fast node. And we don't rely on the argument: **grid-convergence in
+> `scripts/validate.py` shows the 60 s result is within 0.01% of the dt→0 limit.** That's the real
+> proof, independent of any hand-estimate. (See also Q13, Q49.)
+
+**Q62. What are the initial conditions? Doesn't that bias the result?**
+> Every node starts at the first step's ambient temperature (`engine.py:198`). The design-day demo
+> cold-starts both shelters — deliberate, so the transient is honest. The continuous year cold-starts
+> on 1 Jan, adding a small (~2% of annual) mass warm-up load, documented in the `annual_energy`
+> docstring as honest conservatism rather than warmed away.
+
+**Q63. Does your model actually conserve energy?**
+> Yes, and we check it: one of the four `validate.py` cases is a **first-law closure** — with sun and
+> sky switched off, energy stored in the nodes equals net heat across the envelope, exact to rounding.
+> A sign or unit bug in the balance would break that check immediately.
+
+**Q64. How do you avoid unit bugs across all these terms?**
+> Strict **SI** internally — joules, watts, kelvin/°C, metres, seconds — documented per field. The
+> only conversion is J→kWh at the very end (`engine.py:288`, `/3.6e6`). Keeping conversions at the
+> boundary is what prevents mid-calculation drift, and the first-law check (Q63) is the backstop.
+
+**Q65. Is it deterministic — same inputs, same output?**
+> Yes. No RNG anywhere in the engine, synthetic weather is deterministic, and
+> `scripts/lock_real_numbers.py` reproduces the canonical numbers exactly every run. That's what makes
+> the `@st.cache_data` layer valid and the pitch numbers trustworthy.
+
+**Q66. You claim "under a second per design" — prove it.**
+> Measured on this machine (CPython 3.12): a single design run (5-day transient, heated to 20 °C, 60 s
+> steps = **7,200 steps**) is **~21 ms**; a full dashboard refresh (free-float + heated pair, one
+> slider move) is **~42 ms**; a full **continuous year (525,600 steps)** is **~1.5 s** and reproduces
+> the 2,140 kWh headline. So "under a second" is conservative — the 72-candidate optimiser finishes in
+> a couple of seconds.
+
+**Q67. Why a Python for-loop instead of vectorizing? Why NumPy then?**
+> The forcings — sol-air per surface, POA irradiance, interpolation — are fully vectorized as NumPy
+> array ops over the whole time axis *before* the loop. But the integration is **explicit Euler, which
+> is sequential**: step k depends on step k−1, so the time axis genuinely can't be vectorized away.
+> The per-step work is tiny, which is why 525k steps still run in ~1.5 s. NumPy earns its place on the
+> forcings; the loop is inherently serial, and that's correct — not laziness.
+
+**Q68. Streamlit re-runs the whole script on every click — how do you stay fast?**
+> Every simulation wrapper is `@st.cache_data`, keyed on its inputs (`app.py:152` onward), so a rerun
+> only recomputes what actually changed — a full refresh is ~42 ms regardless. The expensive annual
+> run is gated behind a button so it doesn't fire on every interaction.
+
+**Q69. What if I enter a negative wall size or zero dimensions?**
+> Guarded. `box_shelter` raises `ValueError` on non-positive dimensions and clamps the window ratio to
+> [0, 0.95] and infiltration to ≥ 0 (`geometry.py:289`), with a comment saying it's there so a bad
+> input can't divide-by-zero or build a negative-area wall downstream. The dashboard sliders already
+> stay in range; the guard protects the raw API.
+
+**Q70. What if PVGIS is down, or there's no network in the field?**
+> Three fallbacks, no crash: we ship `data/leh_tmy.csv` (real PVGIS, committed) as an offline bundle;
+> the synthetic-day generator needs only a latitude/altitude and a temperature range, no network at
+> all; and successful fetches cache to `data/cache/`. Connectivity is assumed-absent by design — it's
+> a defence context.
+
+**Q71. Malformed CSV, wrong columns, wrong timezone — what happens?**
+> Timezone we handle explicitly — PVGIS arrives UTC and we convert to local; EPW is already local. On
+> arbitrary malformed files I'll be honest: the loaders handle the known PVGIS/EPW/CSV shapes, but
+> hardening against garbage input isn't bulletproof yet. Cheap to add, and I'd own it rather than
+> claim otherwise.
+
+**Q72. Your optimiser — brute force? Why not gradient-based?**
+> Deliberate brute force over a small discrete grid (**72 combinations**: wall × glazing × window
+> ratio × orientation × mass). The choices are *categorical* — "insulated" vs "uninsulated", "double"
+> vs "low-e" — so there's no gradient to descend. Exhaustive over 72 × ~20 ms is trivial and
+> **guarantees the global optimum over the grid**, with no local-minimum risk. Smarter would be worse.
+
+**Q73. Do you have unit tests?**
+> Not a formal `pytest` suite — I'll be straight about that. What we have is **verification**:
+> `scripts/validate.py` runs four analytic checks and prints a PASS/FAIL table; `run_demo.py` and
+> `lock_real_numbers.py` reproduce the headline numbers every run, so a regression shows up
+> immediately. Correctness is checked and reproducible — organised as verification scripts rather than
+> a `tests/` folder. (Wrapping those checks as `pytest` assertions is a small, honest next step.)
+
+**Q74. CI? Linting? Type checking?**
+> The code is fully **type-hinted** (`from __future__ import annotations`, typed dataclasses), but I
+> won't pretend there's a CI pipeline or a `mypy`/`ruff` gate — there isn't. An honest "not yet," same
+> as the `pytest` suite. Better to say so than get caught claiming a green build that doesn't exist.
+
+**Q75. Add a new region / material / a second room — how hard?**
+> Region = one `Location` entry (data, not code). Material = one row in the `materials` DB. A second
+> zone is the honest bigger one: today it's single-zone; the RC framework extends to coupled zones
+> (each a node, shared walls as resistances), but that's real work, not a config change — it's roadmap.
+
+**Q76. How do I reproduce your headline number from a clean clone?**
+> `pip install -r requirements.txt`, then `python scripts/run_demo.py` — it prints the ~84% saving
+> (≈28 vs ≈170 kWh/day) and writes the temperature chart. One command, no configuration.
+
+**Q77. Change something live — the setpoint, or the region.**
+> Setpoint is one argument: `simulate(shelter, climate, heating_setpoint=22.0)`. Region is a
+> `Location` preset in `climate.py` (Leh/Drass/Siachen/Tawang — lat/lon/altitude/albedo); swap it and
+> re-run. In the dashboard both are sliders — move one and the curve and the kWh number update live.
+> That responsiveness *is* the pitch.
 
 ---
 
