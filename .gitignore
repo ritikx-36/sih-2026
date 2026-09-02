@@ -17,8 +17,7 @@ __pycache__/
 data/cache/
 outputs/
 
-# Presentation deck — working files kept local; the final submission deck IS tracked
+# Presentation deck — working files kept local
 docs/slides/
 docs/*.pptx
 docs/*.pdf
-!docs/Thermal-Shelter_SIH2026_PS26051.pptx
