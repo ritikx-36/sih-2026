@@ -242,17 +242,18 @@ s4 = S[4]
 body4 = find(s4, "TextBox 8")
 set_box(body4, 0.55, 1.4, 6.15, 5.5)
 fill(body4.text_frame, [
-    ("~80% less heating — every month of a real Leh year", 18, True, GREEN, 0, 0),
-    ("7,960 vs 39,814 kWh/year to hold 20 °C — driven by a PVGIS Typical "
-     "Meteorological Year (real clouds and irradiance, not a clear-sky day).", 13, False, INK, 0, 3),
-    ("≈ 3,900 L kerosene · ₹3.5 lakh · ~10 t CO₂ — saved per shelter, per year.", 15, True, ACCENT, 0, 5),
+    ("~93% less heating over a full measured Leh year", 18, True, GREEN, 0, 0),
+    ("2,140 vs 31,415 kWh/year to hold 20 °C, from a continuous 8,760-hour "
+     "simulation on a PVGIS Typical Meteorological Year (real clouds and irradiance, "
+     "not a clear-sky day).", 13, False, INK, 0, 3),
+    ("≈ 3,550 L kerosene · ₹3.2 lakh · ~8.9 t CO₂ — saved per shelter, per year.", 15, True, ACCENT, 0, 5),
     ("(Clear design-day: 82–86% less across Leh, Drass, Siachen, Tawang — Leh 84%.)", 12, False, GREY, 0, 4),
     ("Who it helps", 16, True, ACCENT, 0, 8),
     ("Armed forces & border posts · high-altitude communities · disaster relief.", 13, False, INK, 1, 0),
     ("Benefits", 16, True, ACCENT, 0, 8),
-    ("Economic — thousands of litres of kerosene and ₹3.5 lakh saved per shelter each "
+    ("Economic — ~3,550 fewer litres of kerosene and ₹3.2 lakh saved per shelter each "
      "year; designs done in minutes, not months.", 13, False, INK, 1, 0),
-    ("Environmental — ~10 t less CO₂ per shelter per year in a fragile Himalayan ecosystem.", 13, False, INK, 1, 0),
+    ("Environmental — ~8.9 t less CO₂ per shelter per year in a fragile Himalayan ecosystem.", 13, False, INK, 1, 0),
     ("Operational & social — energy resilience where supply lines are thin; warmer, safer "
      "shelters; fewer cold-related injuries.", 13, False, INK, 1, 0),
 ])

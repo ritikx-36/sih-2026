@@ -59,14 +59,23 @@ def _baseline():
 
 def compute():
     cs = climate.from_csv(os.path.join("data", "leh_tmy.csv"), climate.LEH)
-    prof = annual.annual_profile(cs, _design(), _baseline(), SETPOINT,
-                                 vent_high=VENT_HIGH, days=DAYS)
-    d = np.array(prof["design_aux"])
-    b = np.array(prof["baseline_aux"])
-    c = np.array(prof["comfort"]) * 100.0
-    d_year = float(np.dot(d, DIM))
-    b_year = float(np.dot(b, DIM))
+    design, base = _design(), _baseline()
+
+    # Energy: continuous 8760-h run per shelter (the canonical annual total), with
+    # aux bucketed by month -> kWh/day bars that sum to the true year figure.
+    de = annual.annual_energy(cs, design, SETPOINT)
+    be = annual.annual_energy(cs, base, SETPOINT)
+    dim = np.array(DIM)
+    d = np.array(de["aux_kwh"]) / dim
+    b = np.array(be["aux_kwh"]) / dim
+    d_year = de["annual_kwh"]
+    b_year = be["annual_kwh"]
     saved = b_year - d_year
+
+    # Comfort line stays representative-day (the clean typical-day read per month).
+    prof = annual.annual_profile(cs, design, base, SETPOINT, vent_high=VENT_HIGH, days=DAYS)
+    c = np.array(prof["comfort"]) * 100.0
+
     return dict(d=d, b=b, c=c,
                 saving=(1 - d_year / b_year) * 100 if b_year else 0.0,
                 fi=impact.fuel_impact(saved),
@@ -141,8 +150,8 @@ def main():
     ax.legend(h1 + h2, l1 + l2, loc="upper center", fontsize=9.5, ncol=3, framealpha=0.9)
 
     fig.text(0.058, 0.045,
-             "Real Leh TMY · one representative day per month · design (insulated + 30% south "
-             "glazing + 1000 L water wall) vs uninsulated stone hut — heating cut ~80% every month.",
+             "Real Leh TMY · continuous 8760-hour simulation · insulated design + 30% S glazing "
+             "+ 1000 L water wall vs uninsulated stone hut — 93% less heating, all year.",
              ha="left", va="center", fontsize=9, color=SUB)
 
     out = os.path.abspath("docs/seasonal.png")

@@ -136,17 +136,18 @@ engine is grid-converged."
 ## Slide 5 — IMPACT AND BENEFITS
 
 **Headline impact (on a real measured Leh year — PVGIS TMY):**
-> **~80% less heating, every month of the year** — 7,960 vs 39,814 kWh/year to hold 20 °C.
-> That is **≈3,900 litres of kerosene, ₹3.5 lakh and ~10 tonnes of CO₂ saved — per shelter,
+> **~93% less heating over a full measured year** — 2,140 vs 31,415 kWh/year to hold 20 °C,
+> from a continuous 8,760-hour simulation.
+> That is **≈3,550 litres of kerosene, ₹3.2 lakh and ~8.9 tonnes of CO₂ saved — per shelter,
 > per year.** *(On a clear design-day the same shelter shows 82–86% less heating across Leh,
 > Drass, Siachen and Tawang — Leh 84%.)*
 
 **Who it helps:** armed forces & border posts · high-altitude communities · disaster relief.
 
 **Benefits:**
-- **Economic** — ~3,900 fewer litres of kerosene and **₹3.5 lakh saved per shelter per year**,
+- **Economic** — ~3,550 fewer litres of kerosene and **₹3.2 lakh saved per shelter per year**,
   cutting the convoy burden on treacherous supply lines; and designs done in minutes, not months.
-- **Environmental** — **~10 tonnes less CO₂ per shelter per year**; less combustion in a
+- **Environmental** — **~8.9 tonnes less CO₂ per shelter per year**; less combustion in a
   fragile Himalayan ecosystem.
 - **Operational & social** — energy resilience where supply lines are thin; warmer, safer
   shelters; fewer cold-related injuries.

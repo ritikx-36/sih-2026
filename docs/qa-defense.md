@@ -13,10 +13,11 @@ end is the one page to memorise.
   **not** open with "it reaches +18 °C" — that absolute figure depends on how many clear days,
   and a sharp judge will push on it. Comfort-temperature is the *story*; the % saving is the *proof*.
 - **Have both proof-numbers ready — a clear day AND a real year.** The 82–86% is a *clear
-  design-day*. We also run a **real measured year (PVGIS TMY) for Leh**, and it still shows
-  **~80% less heating across all twelve months** — which translates to **≈3,900 L of kerosene,
-  ₹3.5 lakh and ~10 t CO₂ saved per shelter, per year.** If a judge suspects the clear day is
-  cherry-picked, that's your answer: *"we checked a whole real year, clouds and all — same story."*
+  design-day*. We also run a **real measured year (PVGIS TMY) for Leh** as a continuous
+  8,760-hour simulation, and it shows **~93% less heating over the full year** — which
+  translates to **≈3,550 L of kerosene, ₹3.2 lakh and ~8.9 t CO₂ saved per shelter, per year.**
+  If a judge suspects the clear day is cherry-picked, that's your answer: *"we checked a whole
+  real year, clouds and all — same story."*
 - **Own the simplifications before they're attacked.** "It's a lumped RC model — that's a
   deliberate choice, and here's why" beats being cornered into admitting it.
 - **Never bluff.** If you don't know: *"We haven't measured that yet — it's in the ANSYS
@@ -196,9 +197,10 @@ end is the one page to memorise.
 > We run **both**. The clear-sky day is the *design* condition — the coldest clear nights are when
 > passive heating is hardest, so it's a conservative stress test for comfort. But we also drive the
 > model with a **real measured year — a PVGIS Typical Meteorological Year** (clouds, real irradiance,
-> the works) for the exact site, and roll it up **month by month** in the Seasonal view. That's how we
-> know the saving holds outside the ideal day: **~80% less heating across a real Leh year**, not just
-> on a sunny afternoon. A user can also load any **EPW** weather file. Real weather was a data swap, not
+> the works) for the exact site, run as a **continuous 8,760-hour simulation** and rolled up month by
+> month in the Seasonal view. That's how we know the saving holds outside the ideal day: **~93% less
+> heating across a real Leh year**, not just on a sunny afternoon. A user can also load any **EPW** weather
+> file. Real weather was a data swap, not
 > a model change — the engine already accepted an irradiance time-series; now we feed it a measured one.
 
 **Q21. You assume steady, known material properties. They vary.**
@@ -292,10 +294,11 @@ end is the one page to memorise.
 
 **Q34. Quantify the benefit.**
 > On a clear design-day, from ~170 to ~28 kWh/day to hold 20 °C — **~140 kWh/day saved** per shelter.
-> Over a **real measured Leh year** it's **7,960 vs 39,814 kWh — ~32,000 kWh saved per shelter, per
-> year.** In the language the end user budgets in, that's **≈3,900 litres of kerosene not burned, ₹3.5
-> lakh saved, and ~10 tonnes of CO₂ avoided — per shelter, every year** (kerosene 10.3 kWh/L, 80% heater
-> efficiency, ₹90/L; all editable). Multiply across a deployment. Every litre not carried is a convoy that
+> Over a **real measured Leh year** (a continuous 8,760-hour run) it's **2,140 vs 31,415 kWh — ~29,000
+> kWh saved per shelter, per year.** In the language the end user budgets in, that's **≈3,550 litres of
+> kerosene not burned, ₹3.2 lakh saved, and ~8.9 tonnes of CO₂ avoided — per shelter, every year**
+> (kerosene 10.3 kWh/L, 80% heater efficiency, ₹90/L; all editable). Multiply across a deployment. Every
+> litre not carried is a convoy that
 > doesn't run — and the design work itself drops from months of manual analysis to minutes.
 
 **Q35. Beyond defence?**
@@ -395,8 +398,8 @@ how much sun it captures, and how much heating it needs — so you can design on
 not fuel. ANSYS validates the winner.*
 
 **Killer number:** **82–86% less heating** than a baseline hut (Leh 84% — ~28 vs ~170 kWh/day),
-across Leh / Drass / Siachen / Tawang. On a **real measured Leh year**, still **~80% less** — ≈**3,900 L
-kerosene, ₹3.5 lakh and ~10 t CO₂ saved per shelter per year.** *(Lead with the % — it's robust.
+across Leh / Drass / Siachen / Tawang. On a **real measured Leh year** (continuous 8,760-hour run),
+**~93% less** — ≈**3,550 L kerosene, ₹3.2 lakh and ~8.9 t CO₂ saved per shelter per year.** *(Lead with the % — it's robust.
 Temperature is the story, % is the proof; the fuel/₹/CO₂ is the payoff DRDO budgets in.)*
 
 **Three PS outputs we deliver:** indoor temperature over time · solar energy captured · heat-flow vs ambient.

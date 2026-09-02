@@ -21,3 +21,9 @@ outputs/
 docs/slides/
 docs/*.pptx
 docs/*.pdf
+
+# Stray npm artifacts
+node_modules/
+
+# EnergyPlus cross-validation working dir (generated IDF/EPW + run outputs)
+build/

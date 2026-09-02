@@ -2,10 +2,10 @@
 One-off: lock the exact real-TMY numbers used in the pitch materials.
 
 Drives the SAME design/baseline the dashboard uses (identical to
-make_dashboard_shot.py) with the REAL bundled Leh TMY (data/leh_tmy.csv),
-runs the 12-month annual profile (exactly what the Seasonal tab shows), and
-prints the January representative-day figures, the full-year aggregate, and
-the fuel/₹/CO₂ impact. Numbers printed here are the canonical deck figures.
+make_dashboard_shot.py) with the REAL bundled Leh TMY (data/leh_tmy.csv), and
+prints the canonical deck figures: the January representative-day live clip, the
+full-year heating from a **continuous 8760-hour run** (the annual energy total +
+fuel/₹/CO₂ impact), and the representative-day comfort curve.
 
 Run:  PYTHONPATH=/Users/ritik/sih ./.venv/bin/python scripts/lock_real_numbers.py
 """
@@ -72,22 +72,32 @@ def main():
     print(f"x{impact.WINTER_DAYS}-day winter: {fi_win.litres:,.0f} L  "
           f"Rs{fi_win.inr:,.0f}  {fi_win.co2_kg/1000:.1f} t CO2")
 
-    # ---- Full-year annual profile (exactly the Seasonal tab) ----
-    prof = annual.annual_profile(cs, design, base, SETPOINT, vent_high=VENT_HIGH, days=DAYS)
-    d_year = sum(a * d for a, d in zip(prof["design_aux"], DIM))
-    b_year = sum(a * d for a, d in zip(prof["baseline_aux"], DIM))
+    # ---- Full-year annual energy (continuous 8760-h run, the canonical total) ----
+    de = annual.annual_energy(cs, design, SETPOINT)
+    be = annual.annual_energy(cs, base, SETPOINT)
+    d_year = de["annual_kwh"]
+    b_year = be["annual_kwh"]
     saved = b_year - d_year
     yr_save = (1 - d_year / b_year) * 100 if b_year else 0.0
-    comfort_year = sum(c * d for c, d in zip(prof["comfort"], DIM)) / sum(DIM) * 100
     fi = impact.fuel_impact(saved)
-    print("\n=== FULL-YEAR annual integral (Seasonal tab, x days-in-month) ===")
+
+    # ---- Comfort stays representative-day (the monthly comfort curve) ----
+    prof = annual.annual_profile(cs, design, base, SETPOINT, vent_high=VENT_HIGH, days=DAYS)
+    comfort_year = sum(c * d for c, d in zip(prof["comfort"], DIM)) / sum(DIM) * 100
+
+    print("\n=== FULL-YEAR continuous 8760-h run (canonical annual energy) ===")
     print(f"design={d_year:,.0f}  baseline={b_year:,.0f} kWh/yr  saved={saved:,.0f} kWh/yr "
           f"-> {yr_save:.0f}% less")
-    print(f"year-mean comfort={comfort_year:.0f}%")
-    print(f"IMPACT/yr: {fi.litres:,.0f} L kerosene   Rs{fi.inr:,.0f}   {fi.co2_kg/1000:.1f} t CO2")
-    print("\nper-month design_aux:", [round(x, 1) for x in prof["design_aux"]])
-    print("per-month baseline_aux:", [round(x, 1) for x in prof["baseline_aux"]])
-    print("per-month comfort%:", [round(x * 100) for x in prof["comfort"]])
+    print(f"year-mean comfort (rep-day)={comfort_year:.0f}%")
+    print(f"IMPACT/yr: {fi.litres:,.0f} L kerosene   Rs{fi.inr:,.0f} (Rs{fi.inr/1e5:.1f} lakh)   "
+          f"{fi.co2_kg/1000:.1f} t CO2")
+    dpm = [x / d for x, d in zip(de["aux_kwh"], DIM)]
+    bpm = [x / d for x, d in zip(be["aux_kwh"], DIM)]
+    print("\nper-month design kWh (total):", [round(x) for x in de["aux_kwh"]])
+    print("per-month baseline kWh (total):", [round(x) for x in be["aux_kwh"]])
+    print("per-month design kWh/day:", [round(x, 1) for x in dpm])
+    print("per-month baseline kWh/day:", [round(x, 1) for x in bpm])
+    print("per-month comfort% (rep-day):", [round(x * 100) for x in prof["comfort"]])
 
 
 if __name__ == "__main__":

@@ -22,13 +22,13 @@ Thermal-Shelter is a fast Python design tool for cold, high-altitude shelters. Y
 
 ## Key Results
 
-- **On a real measured year (Leh PVGIS TMY): 80% less heating** across all twelve months — **7,960 vs 39,814 kWh/year** to hold 20 °C. That saved energy is **≈3,900 litres of kerosene, ₹3.5 lakh and ~10 tonnes of CO₂ — per shelter, per year** (kerosene 10.3 kWh/L, 80% heater efficiency, ₹90/L).
+- **On a real measured year (Leh PVGIS TMY): 93% less heating** over the full year — **2,140 vs 31,415 kWh/year** to hold 20 °C, from a continuous 8,760-hour simulation. That saved energy is **≈3,550 litres of kerosene, ₹3.2 lakh and ~8.9 tonnes of CO₂ — per shelter, per year** (kerosene 10.3 kWh/L, 80% heater efficiency, ₹90/L).
 - **On a clear design-day: 82–86% less heating** than a baseline hut across four sites — Leh, Drass, Siachen, Tawang — over 5 clear winter days at a 20 °C setpoint (Leh: 84% — 27.6 vs 170.5 kWh/day).
 - Comfort is scored as the fraction of time held in the 18–24 °C band, and each full multi-day design runs in under 1 second.
 
 ## Impact
 
-The tool serves armed forces and border posts, high-altitude communities, and disaster-relief deployments. On a real Leh year it cuts heating by ~80% — about **3,900 fewer litres of kerosene, ₹3.5 lakh saved and ~10 tonnes of CO₂ avoided per shelter, every year** — slashing the diesel-and-kerosene convoy burden on treacherous supply lines, lowering emissions in a fragile Himalayan ecosystem, and improving energy resilience where supply lines are thin, while shortening shelter design from months of manual analysis to minutes.
+The tool serves armed forces and border posts, high-altitude communities, and disaster-relief deployments. On a real Leh year it cuts heating by ~93% — about **3,550 fewer litres of kerosene, ₹3.2 lakh saved and ~8.9 tonnes of CO₂ avoided per shelter, every year** — slashing the diesel-and-kerosene convoy burden on treacherous supply lines, lowering emissions in a fragile Himalayan ecosystem, and improving energy resilience where supply lines are thin, while shortening shelter design from months of manual analysis to minutes.
 
 ## Tech stack
 

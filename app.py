@@ -242,6 +242,25 @@ def run_annual(geo, insulated, glazing_key, wwr, facades, orientation,
                                  vent_high=vent_high, days=int(days))
 
 
+@st.cache_data(show_spinner=False)
+def run_annual_energy(geo, insulated, glazing_key, wwr, facades, orientation,
+                      L, W, H, ach, mass_kind, mass_vol, mass_area, setpoint):
+    """Canonical annual heating from one **continuous 8760-hour** run per shelter (design
+    and baseline), with auxiliary energy bucketed by calendar month. Physically faithful
+    (thermal storage coasts across days/seasons) where a representative day over-states
+    stored-heat designs. Heavier than the rep-day profile (~5 s) but cached per design."""
+    cs_full, _status = _fetch_tmy(geo)
+    if cs_full is None:
+        return None
+    design = _build_shelter(insulated, glazing_key, wwr, facades, orientation,
+                            L, W, H, ach, mass_kind, mass_vol, mass_area)
+    baseline = _baseline_shelter(L, W, H, orientation)
+    return {
+        "design": annual.annual_energy(cs_full, design, setpoint),
+        "baseline": annual.annual_energy(cs_full, baseline, setpoint),
+    }
+
+
 # --------------------------------------------------------------------------- #
 #  UI
 # --------------------------------------------------------------------------- #
@@ -519,19 +538,24 @@ with tab_s:
         st.info("Switch **Weather data** to *Real TMY (PVGIS)* in the sidebar to simulate the "
                 "shelter across all 12 months of a Typical Meteorological Year for this site.")
     else:
-        st.caption("Month-by-month heating demand and comfort, each from a representative day of "
-                   "the site's measured TMY. This is the proof the shelter performs **all year**, "
-                   "not just on the coldest design day.")
-        if st.button("Run annual simulation (12 months)", type="primary"):
-            with st.spinner("Simulating 12 representative days…"):
+        st.caption("Month-by-month heating from a continuous full-year (8760-hour) run on the "
+                   "site's measured TMY, with a representative-day comfort curve. This is the "
+                   "proof the shelter performs **all year**, not just on the coldest design day.")
+        if st.button("Run annual simulation (full year)", type="primary"):
+            with st.spinner("Simulating a full year (8760 h) + monthly comfort…"):
                 prof = run_annual(geo, insulated, glazing_key, wwr, tuple(facades), orientation,
                                   L, W, H, ach, mass_kind, mass_vol, mass_area,
                                   setpoint, vent_high, days)
-            if not prof:
+                en = run_annual_energy(geo, insulated, glazing_key, wwr, tuple(facades),
+                                       orientation, L, W, H, ach, mass_kind, mass_vol,
+                                       mass_area, setpoint)
+            if not prof or not en:
                 st.error("Annual run unavailable — no real weather for this site.")
             else:
-                da, ba = np.array(prof["design_aux"]), np.array(prof["baseline_aux"])
-                cf = np.array(prof["comfort"]) * 100.0
+                dim = np.array(DAYS_IN_MONTH)
+                da = np.array(en["design"]["aux_kwh"]) / dim       # continuous kWh/day
+                ba = np.array(en["baseline"]["aux_kwh"]) / dim
+                cf = np.array(prof["comfort"]) * 100.0             # rep-day comfort curve
                 figs = go.Figure()
                 figs.add_trace(go.Bar(x=MONTHS, y=ba, name="baseline hut", marker_color=C_BASE))
                 figs.add_trace(go.Bar(x=MONTHS, y=da, name="your design", marker_color=C_DESIGN))
@@ -547,20 +571,21 @@ with tab_s:
                     margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(figs, width="stretch")
 
-                # annual totals: weight each month's daily figure by that month's length
-                design_yr = float(np.dot(da, DAYS_IN_MONTH))
-                base_yr = float(np.dot(ba, DAYS_IN_MONTH))
+                # annual totals: exact integrals from the continuous full-year runs
+                design_yr = float(en["design"]["annual_kwh"])
+                base_yr = float(en["baseline"]["annual_kwh"])
                 fi = impact.fuel_impact(base_yr - design_yr)
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Heating saved / year", f"{base_yr - design_yr:,.0f} kWh")
                 c2.metric("Kerosene saved / year", f"{fi.litres:,.0f} L")
                 c3.metric("CO₂ avoided / year", f"{fi.co2_kg / 1000:.1f} t")
                 st.caption(
-                    f"Over a full year this design needs **{design_yr:,.0f} kWh** of heating vs "
-                    f"**{base_yr:,.0f} kWh** for the baseline hut — about "
-                    f"**{fi.litres:,.0f} L of kerosene and ₹{fi.inr:,.0f}** saved. Winter months "
-                    f"carry the load; summer sits near zero. The comfort line is the share of each "
-                    f"representative day the free-floating design stays within 18–24 °C.")
+                    f"Over a full year (a continuous 8760-hour run) this design needs "
+                    f"**{design_yr:,.0f} kWh** of heating vs **{base_yr:,.0f} kWh** for the "
+                    f"baseline hut — about **{fi.litres:,.0f} L of kerosene and ₹{fi.inr:,.0f}** "
+                    f"saved. Winter months carry the load; summer sits near zero. The comfort "
+                    f"line is the share of each representative day the free-floating design "
+                    f"stays within 18–24 °C.")
 
 with st.expander("Shelter details"):
     st.text(d["summary"])

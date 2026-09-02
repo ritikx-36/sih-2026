@@ -91,8 +91,8 @@ the **Seasonal** tab.*
 > "And this isn't just an idealised clear day. Flip to **real measured weather** — a
 > Typical Meteorological Year for Leh, clouds and all — and open the **Seasonal** tab.
 > **Every month of a real year:** red is the baseline hut, blue is our design, the green
-> line is time spent comfortable. It needs **~80% less heating year-round** — which is
-> **about 3,900 litres of kerosene, ₹3.5 lakh and 10 tonnes of CO₂ saved per shelter,
+> line is time spent comfortable. Over the full year it needs **~93% less heating** — which is
+> **about 3,550 litres of kerosene, ₹3.2 lakh and 8.9 tonnes of CO₂ saved per shelter,
 > every year.** That's the number DRDO actually budgets in."
 
 *Switch **Weather data** back to **Synthetic clear day** before the optimiser (faster).*
@@ -127,7 +127,7 @@ likely get:
 - **"Is 9°C mean / 6% comfort not weak?"** → "That's the *free-float* run with
   **zero heating**, from a cold start — it's honestly showing the transient climb,
   not a cherry-picked converged day. The robust headline is the heating reduction:
-  **84% less to hold 20°C on a clear design-day, ~80% less across a whole real year.**
+  **84% less to hold 20°C on a clear design-day, ~93% less across a whole real year.**
   Both are on screen."
 - **"Why not just use ANSYS?"** → "ANSYS is hours per case — you can't design in it.
   We screen hundreds of options in seconds, then validate the winner in ANSYS.
