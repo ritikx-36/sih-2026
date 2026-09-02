@@ -245,7 +245,7 @@ def run_annual(geo, insulated, glazing_key, wwr, facades, orientation,
 # --------------------------------------------------------------------------- #
 #  UI
 # --------------------------------------------------------------------------- #
-st.set_page_config(page_title="Thermal-Shelter", page_icon="🏔️", layout="wide")
+st.set_page_config(page_title="Thermal-Shelter", page_icon=":material/device_thermostat:", layout="wide")
 
 # ---- sidebar: design controls -------------------------------------------- #
 sb = st.sidebar
