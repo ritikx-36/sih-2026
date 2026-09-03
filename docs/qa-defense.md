@@ -556,9 +556,10 @@ remembered.*
 > claim otherwise.
 
 **Q72. Your optimiser — brute force? Why not gradient-based?**
-> Deliberate brute force over a small discrete grid (**72 combinations**: wall × glazing × window
-> ratio × orientation × mass). The choices are *categorical* — "insulated" vs "uninsulated", "double"
-> vs "low-e" — so there's no gradient to descend. Exhaustive over 72 × ~20 ms is trivial and
+> Deliberate brute force over a small discrete grid (**72 combinations**: glazing × window-ratio ×
+> facing × orientation × mass — the wall build-up is held at the insulated spec). The choices are
+> *categorical* — "double" vs "low-e" glazing, south-only vs three-sided windows — so there's no
+> gradient to descend. Exhaustive over 72 × ~20 ms is trivial and
 > **guarantees the global optimum over the grid**, with no local-minimum risk. Smarter would be worse.
 
 **Q73. Do you have unit tests?**

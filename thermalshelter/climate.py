@@ -117,13 +117,13 @@ def sky_temperature(
     """
     Effective sky temperature [°C] for long-wave radiative exchange.
 
-    Uses the Berdahl–Martin clear-sky emissivity correlation (a function of
-    dewpoint), then corrects for cloud cover. On a clear, dry Ladakh night the
+    Uses a dewpoint-based clear-sky emissivity correlation (Berdahl–Martin
+    family, in a linearized form), then corrects for cloud cover. On a clear, dry Ladakh night the
     sky emissivity is low (~0.7), so the sky "sees" as very cold and surfaces
     lose a lot of heat radiatively — the physical reason nights crash.
     """
     T_air_K = temp_air + 273.15
-    eps_clear = 0.741 + 0.0062 * dewpoint            # Berdahl–Martin
+    eps_clear = 0.741 + 0.0062 * dewpoint            # Berdahl–Martin family (linearized dewpoint fit)
     eps_clear = np.clip(eps_clear, 0.6, 1.0)
     c = np.clip(cloud_fraction, 0.0, 1.0)
     eps_sky = eps_clear + (1.0 - eps_clear) * c       # clouds -> toward blackbody
