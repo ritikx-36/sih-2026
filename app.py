@@ -299,8 +299,9 @@ with sb.expander("Climate & region", expanded=True):
         "Weather data", ["Synthetic clear day", "Real TMY (PVGIS)"],
         index=0, horizontal=True,
         help="Synthetic = one idealized clear day from your sliders (fast, always available). "
-             "Real TMY = a Typical Meteorological Year measured for this site (real clouds and "
-             "irradiance), fetched live from PVGIS and cached — this also unlocks the Seasonal tab.")
+             "Real TMY = a Typical Meteorological Year for this site — a representative year built "
+             "from long-term records (real clouds and irradiance), fetched live from PVGIS and "
+             "cached — this also unlocks the Seasonal tab.")
     wx = "real" if wx_label.startswith("Real") else "synthetic"
 
     days = st.slider("Days simulated", 1, 7, 5)
@@ -309,7 +310,7 @@ with sb.expander("Climate & region", expanded=True):
         t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, def_tmax, 1.0, key=f"tmax_{region_key}")
     else:
         t_min, t_max = def_tmin, def_tmax
-        st.caption("Real-TMY mode: indoor results use measured hourly weather (a representative "
+        st.caption("Real-TMY mode: indoor results use the TMY's hourly weather (a representative "
                    "January day here); the temperature sliders apply to the synthetic day only. "
                    "See the **Seasonal** tab for the full year.")
 
@@ -386,7 +387,7 @@ st.caption(f"Design an area-specific shelter for {site_label} and see how warm i
 if wx == "real" and tmy_status == "live":
     st.caption(f"Live PVGIS Typical Meteorological Year for {site_label} — cached for next time.")
 elif wx == "real" and tmy_status == "cache":
-    st.caption(f"Measured PVGIS Typical Meteorological Year for {site_label} (cached).")
+    st.caption(f"PVGIS Typical Meteorological Year for {site_label} (cached).")
 elif wx == "real" and tmy_status == "fallback":
     st.warning("PVGIS was unreachable — showing the **bundled Leh TMY** as a stand-in for this site.")
 
@@ -539,7 +540,7 @@ with tab_s:
                 "shelter across all 12 months of a Typical Meteorological Year for this site.")
     else:
         st.caption("Month-by-month heating from a continuous full-year (8760-hour) run on the "
-                   "site's measured TMY, with a representative-day comfort curve. This is the "
+                   "site's PVGIS TMY, with a representative-day comfort curve. This is the "
                    "proof the shelter performs **all year**, not just on the coldest design day.")
         if st.button("Run annual simulation (full year)", type="primary"):
             with st.spinner("Simulating a full year (8760 h) + monthly comfort…"):
