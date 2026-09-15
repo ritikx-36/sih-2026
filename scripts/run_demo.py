@@ -120,7 +120,7 @@ def main():
     ax.axhline(0, color="#bbb", lw=0.8)                       # freezing line
     ax.plot(xb, b.T_out, color="#888", lw=1.3, ls="--", label="ambient air")
     if wall is not None:
-        ax.plot(xp, wall, color="#1f77b4", lw=1.3, ls="-.", alpha=0.5,
+        ax.plot(xp, wall, color="#f0ad4e", lw=1.3, ls="-.", alpha=0.5,
                 label="water-wall store (charging)")
     ax.plot(xb, b.T_in, color="#d9534f", lw=2.2, label="indoor — baseline hut")
     ax.plot(xp, p.T_in, color="#1f77b4", lw=2.6, label="indoor — passive design")

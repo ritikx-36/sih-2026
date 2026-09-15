@@ -90,7 +90,7 @@ the **Seasonal** tab.*
 
 > "And this isn't just an idealised clear day. Flip to **real measured weather** — a
 > Typical Meteorological Year for Leh, clouds and all — and open the **Seasonal** tab.
-> **Every month of a real year:** red is the baseline hut, blue is our design, the green
+> **Every month of a real year:** red is the baseline hut, blue is our design, the orange
 > line is time spent comfortable. Over the full year it needs **~93% less heating** — which is
 > **about 3,550 litres of kerosene, ₹3.2 lakh and 8.9 tonnes of CO₂ saved per shelter,
 > every year.** That's the number DRDO actually budgets in."

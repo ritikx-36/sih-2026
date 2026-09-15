@@ -31,7 +31,7 @@ DIM = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]      # 1990 (coerce_year)
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-C_BASE, C_DESIGN, C_COMFORT = "#d9534f", "#1f77b4", "#2ea44f"
+C_BASE, C_DESIGN, C_MASS = "#d9534f", "#1f77b4", "#f0ad4e"
 INK, SUB, ACCENT = "#1b2733", "#5b6b7a", "#0070C0"
 
 BARE_ROOF = geometry.make_construction("Bare timber roof", [("Softwood timber (pine)", 0.04)])
@@ -113,7 +113,7 @@ def main():
         ("Less heating, all year", f"{r['saving']:.0f} %", C_DESIGN),
         ("Kerosene not burned", f"{fi.litres:,.0f} L", INK),
         ("Fuel cost saved", f"₹{fi.inr/1e5:.1f} lakh", INK),
-        ("CO₂ avoided", f"{fi.co2_kg/1000:.1f} t", C_COMFORT),
+        ("CO₂ avoided", f"{fi.co2_kg/1000:.1f} t", C_MASS),
     ]
     x0, kw, kgap, ky, kh = 0.035, 0.2245, 0.012, 0.700, 0.115
     for i, (lab, val, col) in enumerate(cards):
@@ -137,11 +137,11 @@ def main():
     ax.tick_params(labelsize=9.5)
 
     axc = ax.twinx()
-    axc.plot(x, r["c"], color=C_COMFORT, lw=2.4, marker="o", ms=5,
+    axc.plot(x, r["c"], color=C_MASS, lw=2.4, marker="o", ms=5,
              label="% time comfortable (design)")
-    axc.set_ylabel("% time in 18–24 °C band (design)", fontsize=10.5, color=C_COMFORT)
+    axc.set_ylabel("% time in 18–24 °C band (design)", fontsize=10.5, color=C_MASS)
     axc.set_ylim(0, 100)
-    axc.tick_params(axis="y", labelsize=9.5, labelcolor=C_COMFORT)
+    axc.tick_params(axis="y", labelsize=9.5, labelcolor=C_MASS)
     for s in ("top",):
         axc.spines[s].set_visible(False)
 
