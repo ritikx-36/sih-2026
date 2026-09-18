@@ -1,10 +1,14 @@
-# Thermal-Shelter — Python dependencies
-# Recommended interpreter: Python 3.11+  (system 3.9 also works — pip will pick
-# compatible versions automatically per interpreter).
-numpy          # numerical core (arrays, linear algebra, time-stepping)
-scipy          # ODE integration & optimization
-pandas         # time-series climate data handling
-pvlib          # solar position & irradiance (industry-standard model)
-plotly         # interactive charts for the dashboard
-streamlit      # web UI / dashboard
-matplotlib     # quick static plots for engine verification
+# Thermal-Shelter — Python dependencies with minimum versions
+# Recommended interpreter: Python 3.11+
+# Install: pip install -r requirements.txt
+
+numpy>=1.24.0,<2.0.0          # numerical core (arrays, linear algebra, time-stepping)
+scipy>=1.10.0,<2.0.0          # ODE integration & optimization
+pandas>=2.0.0,<3.0.0          # time-series climate data handling
+pvlib>=0.10.0,<1.0.0          # solar position & irradiance (industry-standard model)
+plotly>=5.14.0,<6.0.0         # interactive charts for the dashboard
+streamlit>=1.30.0,<2.0.0      # web UI / dashboard
+matplotlib>=3.7.0,<4.0.0      # quick static plots for engine verification
+
+# Testing (optional, but recommended)
+pytest>=7.4.0,<9.0.0          # test framework

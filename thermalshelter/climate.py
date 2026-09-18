@@ -221,8 +221,34 @@ def from_csv(
     temperature column; wind and humidity are filled with mild defaults if absent.
     Missing solar columns are fine — solar.py will synthesise clear-sky irradiance.
     """
-    raw = pd.read_csv(path)
-    idx = pd.to_datetime(raw[time_col])
+    try:
+        raw = pd.read_csv(path)
+    except FileNotFoundError:
+        raise ValueError(f"Climate data file not found: {path}")
+    except pd.errors.ParserError as e:
+        raise ValueError(f"Malformed CSV file '{path}': {e}")
+    except Exception as e:
+        raise ValueError(f"Could not read climate data from '{path}': {e}")
+
+    if temp_col not in raw.columns:
+        raise ValueError(
+            f"Required temperature column '{temp_col}' not found in {path}. "
+            f"Available columns: {list(raw.columns)}"
+        )
+
+    if time_col not in raw.columns:
+        raise ValueError(
+            f"Required time column '{time_col}' not found in {path}. "
+            f"Available columns: {list(raw.columns)}"
+        )
+
+    try:
+        idx = pd.to_datetime(raw[time_col])
+    except (KeyError, pd.errors.ParserError) as e:
+        raise ValueError(
+            f"Could not parse timestamps in column '{time_col}': {e}"
+        )
+
     if idx.dt.tz is None:
         idx = idx.dt.tz_localize(location.timezone)
     df = pd.DataFrame(index=pd.DatetimeIndex(idx))
@@ -273,7 +299,7 @@ def _tmy_frame_to_climate(data: pd.DataFrame, location: Location) -> ClimateSeri
     return ClimateSeries(location=location, data=df.sort_index())
 
 
-def from_pvgis_tmy(location: Location, coerce_year: int = 1990) -> ClimateSeries:
+def from_pvgis_tmy(location: Location, coerce_year: int = 1990, timeout: int = 30) -> ClimateSeries:
     """
     Download a Typical Meteorological Year for `location` from PVGIS and return it
     as a `ClimateSeries`. NETWORK — the caller usually persists the result to CSV
@@ -285,10 +311,22 @@ def from_pvgis_tmy(location: Location, coerce_year: int = 1990) -> ClimateSeries
     """
     from pvlib import iotools   # lazy: pvlib import is heavy and only needed here
 
-    data, _meta = iotools.get_pvgis_tmy(
-        location.latitude, location.longitude,
-        map_variables=True, coerce_year=coerce_year,
-    )
+    try:
+        # Try with timeout parameter (pvlib may not support it directly)
+        data, _meta = iotools.get_pvgis_tmy(
+            location.latitude, location.longitude,
+            map_variables=True, coerce_year=coerce_year,
+            timeout=timeout
+        )
+    except TypeError:
+        # Fallback if timeout parameter not supported
+        data, _meta = iotools.get_pvgis_tmy(
+            location.latitude, location.longitude,
+            map_variables=True, coerce_year=coerce_year,
+        )
+    except Exception as e:
+        raise RuntimeError(f"PVGIS fetch failed after {timeout}s: {e}")
+
     # PVGIS returns a UTC index — move it to the site's local time before normalising.
     if data.index.tz is None:
         data = data.tz_localize("UTC")
@@ -342,6 +380,11 @@ def representative_day(
     time of year. (Averaging DNI monthly then transposing at one mid-month angle is
     a standard, defensible approximation for a design tool.)
     """
+    # Validate inputs
+    days = int(max(1, days))  # Ensure days >= 1 to avoid empty series
+    if not 1 <= month <= 12:
+        raise ValueError(f"Month must be between 1 and 12, got {month}")
+
     sub = cs.data[cs.data.index.month == month]
     if sub.empty:
         raise ValueError(f"No data for month {month} in this series.")

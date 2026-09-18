@@ -190,8 +190,13 @@ def check_closure(shelter, c):
              + c["G_out_gnd"] * (T_ground - r.T_mass)
              + c["G_win"] * (r.T_out - r.T_in)
              + c["G_inf"] * (r.T_out - r.T_in))
-    q_in = np.trapezoid(p_ext, secs)                       # [J]
-    throughput = np.trapezoid(np.abs(p_ext), secs)
+    # Handle numpy version differences: trapezoid was added in numpy 1.20
+    if hasattr(np, 'trapezoid'):
+        q_in = np.trapezoid(p_ext, secs)                       # [J]
+        throughput = np.trapezoid(np.abs(p_ext), secs)
+    else:
+        q_in = np.trapz(p_ext, secs)                       # [J]
+        throughput = np.trapz(np.abs(p_ext), secs)
     resid_pct = abs(dU - q_in) / throughput * 100.0
 
     passed = resid_pct < TOL_CLOSE

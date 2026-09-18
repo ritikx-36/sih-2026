@@ -1,29 +1,76 @@
 # Python
-.venv/
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
 
-# OS / editor
-.DS_Store
-.idea/
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
 .vscode/
-.claude/
+.idea/
+*.swp
+*.swo
+*~
+.spyderproject
+.spyproject
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Project-specific
+data/cache/
+*.png
+*.jpg
+!docs/*.png
+!docs/*.jpg
+!docs/dashboard.png
+!docs/demo_curve.png
+!docs/seasonal.png
+!docs/validation_energyplus.png
+!docs/validation.png
+!docs/deck_regions.png
+!docs/deck_flow.png
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Streamlit
-.streamlit/secrets.toml
+.streamlit/
 
-# Data cache / outputs
-data/cache/
-outputs/
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Presentation deck — working files kept local
-docs/slides/
-docs/*.pptx
-docs/*.pdf
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Stray npm artifacts
-node_modules/
+# Environment variables
+.env
+.env.local
 
-# EnergyPlus cross-validation working dir (generated IDF/EPW + run outputs)
-build/
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~

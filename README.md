@@ -53,9 +53,16 @@ high-altitude post actually budgets in.
 
 ```bash
 git clone https://github.com/ritikx-36/sih-2026.git && cd sih-2026
-python3 -m venv .venv                 # Python 3.12 recommended
+python3 -m venv .venv                 # Python 3.9+ supported, 3.12 recommended
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r requirements.txt
+```
+
+**Run the test suite** to verify everything works:
+
+```bash
+.venv/bin/pytest tests/ -v
+# Expected: 11/11 tests passed
 ```
 
 Run the demo — simulates a baseline hut vs a passive design and writes the chart above:
@@ -113,11 +120,47 @@ thermalshelter/     core physics package
   comfort.py        comfort metrics                             (done)
   annual.py         month-by-month seasonal performance         (done)
   impact.py         fuel / ₹ / CO₂ translation of energy saved  (done)
+  logging_config.py structured logging for debugging            (done)
 app.py              Streamlit dashboard — the interactive demo   (done)
-scripts/run_demo.py baseline-vs-passive demo → docs/demo_curve.png
-scripts/fetch_tmy.py pre-fetch a real PVGIS TMY → data/*.csv (offline demo)
+scripts/
+  run_demo.py       baseline-vs-passive demo → outputs/demo_curve.png
+  fetch_tmy.py      pre-fetch a real PVGIS TMY → data/*.csv (offline demo)
+  validate.py       4-layer verification suite with visual output
+tests/
+  test_engine.py    11 automated tests (4 verification + 7 functional)
+.github/workflows/
+  test.yml          CI/CD pipeline (multi-Python testing)
 docs/               figures used in this README
+mypy.ini            type checking configuration
 ```
+
+## Testing & Verification
+
+The project includes comprehensive testing and verification:
+
+**Automated Test Suite** (11 tests):
+```bash
+pytest tests/ -v
+```
+
+**Physics Verification** (4 independent validation layers):
+```bash
+python scripts/validate.py
+```
+- Steady-state = UA·ΔT hand calculation (exact to rounding)
+- First-law energy closure (exact to rounding)
+- Cross-validation vs independent SciPy solver (0.006 °C agreement)
+- Grid convergence (60s timestep within 0.01% of dt→0 limit)
+
+**Type Checking** (optional):
+```bash
+pip install mypy
+mypy thermalshelter/ --config-file mypy.ini
+```
+
+**CI/CD Pipeline**: GitHub Actions automatically runs tests across Python 3.9-3.12 on every push.
+
+
 
 ## Roadmap
 

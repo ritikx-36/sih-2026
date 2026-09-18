@@ -290,6 +290,12 @@ def box_shelter(
         raise ValueError(
             f"Shelter dimensions must be positive (got {length}×{width}×{height} m)."
         )
+    # Validate orientation is a valid azimuth angle
+    if not isinstance(orientation, (int, float)):
+        raise ValueError(f"Orientation must be a number (got {type(orientation).__name__}).")
+    # Normalize orientation to 0-360 range (modulo handles any value)
+    orientation = float(orientation) % 360.0
+
     window_wall_ratio = min(max(window_wall_ratio, 0.0), 0.95)  # keep some opaque wall (mass); never negative area
     infiltration_ach = max(infiltration_ach, 0.0)
 

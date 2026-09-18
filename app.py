@@ -309,10 +309,11 @@ with sb.expander("Climate & region", expanded=True):
         t_min = st.slider("Coldest night (°C)", -40.0, 5.0, def_tmin, 1.0, key=f"tmin_{region_key}")
         t_max = st.slider("Warmest afternoon (°C)", -20.0, 20.0, def_tmax, 1.0, key=f"tmax_{region_key}")
     else:
+        # Real TMY mode: hide temperature sliders to avoid confusion
         t_min, t_max = def_tmin, def_tmax
-        st.caption("Real-TMY mode: indoor results use the TMY's hourly weather (a representative "
-                   "January day here); the temperature sliders apply to the synthetic day only. "
-                   "See the **Seasonal** tab for the full year.")
+        st.info("**Real TMY mode**: Using actual measured weather data for this site. "
+                "Indoor results are driven by the site's Typical Meteorological Year. "
+                "Open the **Seasonal** tab to see the full year's performance.")
 
 with sb.expander("Envelope", expanded=True):
     insulated = st.radio("Construction", ["Well-insulated", "Uninsulated"],

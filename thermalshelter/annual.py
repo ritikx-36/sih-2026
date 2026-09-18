@@ -70,6 +70,8 @@ def annual_profile(
     months: Iterable[int] = range(1, 13),
     days: int = 5,
 ) -> Dict[str, List[float]]:
+    # Validate inputs
+    days = int(max(1, days))  # Ensure days >= 1 to avoid empty series
     """
     Run the design and baseline shelters against a representative day for each month.
 
